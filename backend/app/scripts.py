@@ -7,11 +7,10 @@ import json
 # import pandas as pd
 
 
-async def download_wildberries_products(queries: list, connector: object):
+async def download_wildberries_products(queries: list, connector):
     # Массив для словарей
     result = []
     # print(queries)
-    connector = connector['products']
     product_dict = dict.fromkeys(
         [
             "id_product",
@@ -48,7 +47,7 @@ async def download_wildberries_products(queries: list, connector: object):
                 # print('-------------')
                 if json_obj:
                     for product in json_obj.get("catalog").get("data").get("products"):
-                        product_dict["query"] = query
+                        product_dict["query_str"] = query
                         product_dict["id_product"] = product["id"]
                         product_dict["category_name"] = product["name"]
                         product_dict["brand"] = product["brand"]
@@ -69,8 +68,8 @@ async def download_wildberries_products(queries: list, connector: object):
                         # print("-------------------------")
                         result.append(product_dict.copy())
             await asyncio.sleep(0.5)
-        connector.insert_many(result)
-        for find in connector.find():
+        await connector['products'].insert_many(result)
+        for find in await connector.find():
             print(find)
     return True
 
@@ -132,8 +131,8 @@ async def download_wildberries_comments(imt_ids_feedbacks):
             "advantages",
             "disadvantages",
             "comment",
-            "pluses",
-            "minuses",
+            "pluses_amt",
+            "minuses_amt",
         ]
     )
 
@@ -145,11 +144,9 @@ async def download_wildberries_comments(imt_ids_feedbacks):
         for imt_id in imt_ids_feedbacks:
             if imt_id[1] == 0:
                 continue
-            print(imt_id)
             url = "https://public-feedbacks.wildberries.ru/api/v1/summary/full"
             for num_iter in range(int(imt_id[1] / 30) + 1):
                 payload = {"imtId": int(imt_id[0]), "skip": 30 * num_iter, "take": 30}
-                print(payload)
                 async with session.post(
                     url=url, headers=headers, json=payload
                 ) as response:
@@ -168,15 +165,15 @@ async def download_wildberries_comments(imt_ids_feedbacks):
                             comment_dict["comment"] = comment.get("text")
                             comment_dict["rating"] = comment.get("productValuation")
                             if comment.get("votes"):
-                                comment_dict["pluses"] = comment.get("votes").get(
+                                comment_dict["pluses_amt"] = comment.get("votes").get(
                                     "pluses"
                                 )
-                                comment_dict["minuses"] = comment.get("votes").get(
+                                comment_dict["minuses_amt"] = comment.get("votes").get(
                                     "minuses"
                                 )
                             else:
-                                comment_dict["pluses"] = 0
-                                comment_dict["minuses"] = 0
+                                comment_dict["pluses_amt"] = 0
+                                comment_dict["minuses_amt"] = 0
 
                             print(comment_dict)
                             print("-----------------")

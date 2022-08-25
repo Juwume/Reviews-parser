@@ -1,7 +1,7 @@
 import flask
 from app import app
-from .scripts import download_wildberries_products, download_wildberries_comments,download_wildberries_imt_id
-from .utils import connect_mongo
+from .scripts import download_wildberries_products, download_wildberries_comments, download_wildberries_imt_id
+from .utils import connect_mongo, check_query_in_db
 from flask import request
 
 
@@ -10,10 +10,12 @@ def index():
     return {'message': 'Hello, this is my diploma work'}
 
 
-@app.route('/parser/api/v1.0/wb/<string:query>', methods=['GET'])
+@app.route('/api/wb/<string:query>', methods=['GET'])
 async def parse_wb(query):
     connector = connect_mongo('wildberries')
-    await download_wildberries_products([query], connector)
+    is_in_db = await check_query_in_db(query, connector)
+    if not is_in_db:
+        await download_wildberries_products([query], connector)
     return flask.Response(status=200)
     # download_wildberries_products()
 
