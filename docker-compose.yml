@@ -1,38 +1,31 @@
 version: '3'
 services:
   flask:
-    # Путь до Dockerfile
     build: backend
-    # Имя для создаваемого контейнера
     container_name: backend-flask
-    # Создание переменных окружения в контейнере
     environment:
-      # для отладки (при запуске в релиз убрать!)
-      - FLASK_ENV=development
-      ## Позволяет отслеживать процесс работы приложения в командной строке
+      - FLASK_DEBUG=True
       - PYTHONUNBUFFERED=True
-      ##
-    # Перезапускаем сервис в случае падения
-    restart: on-failure
-    # Прокладывам путь для файлов. Все файлы, которые хранятся у вас в
-    # директории ./backend, появятся в директории контейнера /backend
+      - MONGO_ROOT_USER=${MONGO_ROOT_USER}
+      - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    restart: always
     volumes:
       - ./backend:/backend
     networks:
       - mongo_network
-    # Открываем порт в контейнер
-    # Порт, который будет смотреть наружу : порт который используется внутри контейнера
+    depends_on:
+      - mongo
     ports:
       - "5000:5000"
-    command: gunicorn --bind 0.0.0.0:5000 flask:flask
+    command: gunicorn --bind 0.0.0.0:5000 main:app --timeout 600
 
   mongo:
-    image: mongo:nanoserver
+    image: mongo:6.0.1
     container_name: mongoDB
+    restart: always
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
-      - MONGO_INITDB_DATABASE=project
     volumes:
       - mongodb_data_container:/data/db
     networks:
@@ -40,7 +33,7 @@ services:
     ports:
       - "27017:27017"
   mongo-express:
-    image: mongo-express:0.54.0
+    image: mongo-express:1.0.0-alpha.4
     container_name: mongo-express
     restart: unless-stopped
     environment:
@@ -74,7 +67,8 @@ services:
 
     environment:
      - REDIS_REPLICATION_MODE=master
-
+    depends_on:
+      - flask
     networks:
       - mongo_network
   nginx:
