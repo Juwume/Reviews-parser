@@ -4,13 +4,13 @@ FROM python:3.9.13-bullseye
 WORKDIR /backend
 # Скачиваем/обновляем необходимые библиотеки для проекта
 #COPY pyproject.toml /backend/
-RUN pip install --upgrade pip
-RUN pip3 install "poetry==1.1.15"
-COPY pyproject.toml /backend/
-RUN poetry config virtualenvs.create false
-RUN poetry install --no-interaction --no-ansi
-RUN poetry add flask gunicorn bs4 aiohttp asyncio fake_useragent pymongo aioflask asgiref python-dotenv redis mongoengine
-RUN poetry lock
-COPY . /backend
+RUN pip3 install --upgrade pip &&  \
+    pip3 install "poetry==1.1.15"
+
+COPY pyproject.toml ./pyproject.toml
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi &&  \
+    poetry lock
+COPY . .
 # Устанавливаем порт, который будет использоваться для сервера
 EXPOSE 5000

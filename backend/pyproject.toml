@@ -6,6 +6,18 @@ authors = ["Juwume <maks.smyslov@yandex.ru>"]
 
 [tool.poetry.dependencies]
 python = "^3.9.13"
+flask = "2.*"
+gunicorn = "20.*"
+bs4 = "*"
+aiohttp = "^3.8"
+asyncio = "^3.4"
+fake-useragent = "^1.1"
+pymongo = "^4.3"
+aioflask = "^0.4"
+asgiref = "^3.6"
+#python-dotenv = ""
+redis = "^4.4"
+mongoengine = "^0.25"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

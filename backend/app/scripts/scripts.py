@@ -4,7 +4,7 @@ import aiohttp
 import asyncio
 from fake_useragent import UserAgent
 import json
-from .models.WB import ProductWB, CommentWB
+from app.models.WB import ProductWB, CommentWB
 
 
 async def download_wildberries_comments(query: str):
