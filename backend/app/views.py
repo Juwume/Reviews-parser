@@ -1,6 +1,6 @@
 import flask
 from app import app
-from .scripts import download_wildberries_comments
+from app.scripts.scripts import download_wildberries_comments
 from .utils import connect_mongo, check_query_in_db
 from .models.WB import ProductWB, QueryWB
 from flask import request
