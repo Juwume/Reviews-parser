@@ -1,7 +1,5 @@
 import telebot
-from telebot import types
 import datetime
-from telebot import apihelper
 import psycopg2
 from contextlib import closing
 from config import TOKEN, PG_HOST, PG_NAME, PG_USER, PG_PASSWORD

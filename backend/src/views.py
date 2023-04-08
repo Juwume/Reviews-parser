@@ -1,8 +1,8 @@
 import flask
-from app import app
-from app.scripts.scripts import download_wildberries_comments
-from .utils import connect_mongo, check_query_in_db
-from .models.WB import ProductWB, QueryWB
+from src import app
+from src.scripts.parse_wb import download_wildberries_comments
+from src.utils import connect_mongo, check_query_in_db
+from src.models.wb import ProductWB, QueryWB
 from flask import request
 
 
@@ -13,9 +13,8 @@ def index():
 
 @app.route('/api/wb/<string:query>', methods=['GET'])
 async def parse_wb(query):
-    connector = connect_mongo('WILDBERRIES')
+    connect_mongo('WILDBERRIES')
     is_in_db = check_query_in_db(query, QueryWB)
-    products = []
     if not is_in_db:
         products = await download_wildberries_comments(query)
         return [product.to_json() for product in products]
