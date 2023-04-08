@@ -1,0 +1,31 @@
+version: "3"
+services:
+
+  postgres:
+    build: postgres/
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - bot_files:/var/lib/postgresql/data
+    networks:
+      - bot_net
+  bot:
+    build: bot/
+    container_name: teleg_bot
+    environment:
+      PG_NAME: ${POSTGRES_DB}
+      PG_USER: ${POSTGRES_USER}
+      PG_PASSWORD: ${POSTGRES_PASSWORD}
+      PG_HOST: postgres
+      TOKEN: ${TOKEN}
+    networks:
+      - bot_net
+volumes:
+  bot_files:
+    name: bot_files
+networks:
+  bot_net:
+    name: bot_net
