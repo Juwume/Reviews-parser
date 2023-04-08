@@ -1,4 +1,3 @@
-from xml.dom.minidom import Document
 from mongoengine import *
 
 
@@ -15,7 +14,7 @@ class CommentWB(EmbeddedDocument):
 
 class ProductWB(Document):
     id_product = StringField(required=True)
-    imt_id = StringField(required=True)
+    root_imt_id = StringField(required=True)
     name = StringField(required=True)
     description = StringField(required=False)
     seller = StringField(required=False)
@@ -23,18 +22,15 @@ class ProductWB(Document):
     brand = StringField(required=False)
     price = FloatField(required=False)
     price_old = FloatField(required=False)
-    url = StringField(required=False)  
+    url = StringField(required=False)
     rating = FloatField(required=False)
     feedbacks_amt = IntField(required=True)
     query = StringField(required=False)
     comments = ListField(EmbeddedDocumentField(CommentWB))
-
-    meta = {'db_alias': 'WILDBERRIES'}
+    meta = {"db_alias": "WILDBERRIES"}
 
 
 class QueryWB(Document):
     query = StringField(required=True)
     timestamp = DateTimeField()
-    meta = {'db_alias': 'WILDBERRIES'}
-
-           
+    meta = {"db_alias": "WILDBERRIES"}
