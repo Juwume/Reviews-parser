@@ -18,7 +18,7 @@ class CommentMirkorma(EmbeddedDocument):
     usage_period = StringField(required=False)
 
 
-class ProductMirkorma(Document):
+class ProductMirkorma(EmbeddedDocument):
     id_product = StringField(required=True)
     name = StringField(required=False)
     category_id = StringField(required=False)
@@ -36,5 +36,5 @@ class ProductMirkorma(Document):
 class QueryMirkorma(Document):
     query = StringField(required=True)
     timestamp = DateTimeField()
-    comments = ListField(EmbeddedDocumentField(CommentMirkorma))
+    comments = ListField(EmbeddedDocumentField(ProductMirkorma))
     meta = {"db_alias": "MIRKORMA"}

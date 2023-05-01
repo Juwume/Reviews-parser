@@ -9,11 +9,15 @@ from src import app
 # def make_shell_context():
 #     return dict(src=src)
 import os
+import time
+
 
 # manager.add_command('shell', Shell(make_context=make_shell_context))
 # manager.add_command('db', MigrateCommand)
 
 if __name__ == '__main__':
+    os.environ['TZ'] = 'Europe/Moscow'
+    time.tzset()
     app.run(host='0.0.0.0', port=5000)
 
     # bert_model_tiny2 = BertClassifier(
