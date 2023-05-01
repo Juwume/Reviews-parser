@@ -1,5 +1,4 @@
 import mongoengine
-from bs4 import BeautifulSoup
 import aiohttp
 import asyncio
 from fake_useragent import UserAgent
@@ -77,7 +76,6 @@ async def download_wildberries_comments(query: str):
                     url_comments_second_mirror = (
                         "https://feedbacks2.wb.ru/feedbacks/v1/" + product_root
                     )
-                    print(url_comments_second_mirror)
                     async with session.get(
                         url=url_comments, headers=headers
                     ) as response:
@@ -141,7 +139,6 @@ async def download_wildberries_comments(query: str):
                                 ),
                                 rating=float(product["rating"]),
                                 feedbacks_amt=int(product["feedbacks"]),
-                                query=query,
                                 comments=comments,
                             )
                         )
