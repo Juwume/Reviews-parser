@@ -1,8 +1,12 @@
 import flask
 from src import app
 from src.scripts.parse_wb import download_wildberries_comments
+from src.scripts.parse_mirkorma import download_mirkorma_comments
+from src.scripts.parse_petshop import download_petshop_products
 from src.utils import connect_mongo, check_query_in_db
 from src.models.wb import ProductWB, QueryWB
+from src.models.mirkorma import ProductMirkorma, QueryMirkorma
+
 from flask import request
 
 
@@ -52,11 +56,26 @@ def get_data():
     return flask.Response(status=200)
 
 
-@app.route('/parser/api/v1.0/yamarket/<string:query>', methods=['GET'])
-def parse_yamarket(query):
-    pass
+@app.route('/api/mirkorma/<string:query>', methods=['GET'])
+async def parse_mirkorma(query):
+    connect_mongo('MIRKORMA')
+    # is_in_db = check_query_in_db(query, QueryMirkorma)
+    # if not is_in_db:
+    products = await download_mirkorma_comments(query)
+    return [product.to_json() for product in products]
+    # return ProductMirkorma.objects().to_json()
 
 
-@app.route('/parser/api/v1.0/petshop/<string:query>', methods=['GET'])
-def parse_petshop(query):
-    pass
+@app.route('/api/petshop/<string:query>', methods=['GET'])
+async def parse_petshop(query):
+    connect_mongo('PETSHOP')
+    # is_in_db = check_query_in_db(query, QueryMirkorma)
+    # if not is_in_db:
+    products = await download_petshop_products(query)
+    return [product.to_json() for product in products]
+    # return ProductMirkorma.objects().to_json()
+
+
+@app.route('/healthcheck', methods=['GET'])
+def get_healthcheck():
+    return flask.Response(status=200)
