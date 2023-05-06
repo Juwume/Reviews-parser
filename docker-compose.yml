@@ -16,6 +16,7 @@ services:
       - ./backend:/backend
     networks:
       - mongo_network
+      - api_net
     depends_on:
       - mongo
     ports:
