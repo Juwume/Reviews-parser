@@ -60,16 +60,78 @@ def get_data_wb():
 
 @app.route("/get_data", methods=["GET"])
 def get_data():
-    time_start = datetime.strptime(request.args.get("time_start"), '%Y-%m-%d')
-    time_end = request.args.get("time_end")
+    date_start = datetime.strptime(request.args.get("time_start"), "%Y-%m-%d")
+    date_end = datetime.strptime(request.args.get("time_end"), "%Y-%m-%d")
     connect_mongo("PETSHOP")
     # res = ProductPetshop.objects().aggregate(
     #     {"$match": {"comments.date": {"$gte": time_start}}},
     #     {"$unwind": "$comments"},
     #     {"$group": {"_id": '$name', "comments": {"$push": '$comments.date'}}}
     # )
-    res = ProductPetshop.objects().aggregate(
-        {'$match': {}}
+    # res = ProductPetshop.objects().aggregate(
+    #     [
+    #         {
+    #             "$match": {
+    #                 "comments": {
+    #                     "$elemMatch": {"date": {"$gte": time_start, "$lte": time_end}}
+    #                 }
+    #             }
+    #         },
+    #         {
+    #             "$addFields": {
+    #                 "comments": {
+    #                     "$filter": {
+    #                         "input": "$comments",
+    #                         "as": "comment",
+    #                         "cond": {
+    #                             "$and": [
+    #                                 {"$gte": ["$$comment.date", time_start]},
+    #                                 {"$lte": ["$$comment.date", time_end]},
+    #                             ]
+    #                         },
+    #                     }
+    #                 }
+    #             }
+    #         },
+    #     ]
+    # )
+
+    res = QueryPetshop.objects(query="whiskas").aggregate(
+        [
+            {"$unwind": "$products"},
+            {
+                "$match": {
+                    "products.comments.date": {"$gte": date_start, "$lte": date_end}
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "id_product": "$products.id_product",
+                    "id_similar_products": "$products.id_similar_products",
+                    "name": "$products.name",
+                    "description": "$products.description",
+                    "category_id": "$products.category_id",
+                    "category_name": "$products.category_name",
+                    "brand": "$products.brand",
+                    "price": "$products.price",
+                    "url": "$products.url",
+                    "is_available": "$products.is_available",
+                    "comments": {
+                        "$filter": {
+                            "input": "$products.comments",
+                            "as": "comment",
+                            "cond": {
+                                "$and": [
+                                    {"$gte": ["$$comment.date", date_start]},
+                                    {"$lte": ["$$comment.date", date_end]},
+                                ]
+                            },
+                        }
+                    },
+                }
+            },
+        ]
     )
     out = [doc for doc in res]
     json_result = json.dumps(out, default=json_util.default)
@@ -90,11 +152,12 @@ async def parse_mirkorma(query):
 
 @app.route("/api/petshop/<string:query>", methods=["GET"])
 async def parse_petshop(query):
-    # TODO: Доделать селекцию по дате
-    time_start = request.args.get("time_start")
-    time_end = request.args.get("time_end")
+    date_start = datetime.strptime(request.args.get("date_start", '2000-01-01'), "%Y-%m-%d")
+    date_end = datetime.strptime(request.args.get("date_end", '2025-01-01'), "%Y-%m-%d")
     connect_mongo("PETSHOP")
+
     is_in_db = check_query_in_db(query, QueryPetshop)
+
     # Если в базе не было такого запроса
     if is_in_db == "Not found":
         products = await download_petshop_products(query)
@@ -103,10 +166,12 @@ async def parse_petshop(query):
             products[idx] = json.loads(product.to_json())
             products[idx].pop("_id", None)
             # Дата конвертируется неправильно, поэтому поправляем
-            for comment in products[idx]['comments']:
-                comment['date'] = datetime.fromtimestamp(comment['date']['$date'] / 1000)
+            for comment in products[idx]["comments"]:
+                comment["date"] = datetime.fromtimestamp(
+                    comment["date"]["$date"] / 1000
+                )
         QueryPetshop(query=query, timestamp=datetime.now(), products=products).save()
-        return products
+
     # Если был запрос, но слишком давно
     elif is_in_db == "Time":
         products = await download_petshop_products(query)
@@ -116,9 +181,11 @@ async def parse_petshop(query):
             products[idx] = json.loads(product.to_json())
             products[idx].pop("_id", None)
             # Дата конвертируется неправильно, поэтому поправляем
-            for comment in products[idx]['comments']:
-                comment['date'] = datetime.fromtimestamp(
-                    comment['date']['$date'] / 1000)
+            for comment in products[idx]["comments"]:
+                comment["date"] = datetime.fromtimestamp(
+                    comment["date"]["$date"] / 1000
+                )
+        # Обновление QueryPetshop новыми данными
         found.products = [
             ProductPetshopEmbedded(
                 id_product=product["id_product"],
@@ -139,8 +206,47 @@ async def parse_petshop(query):
         ]
         found.timestamp = datetime.now()
         found.save()
-        return products
-    return QueryPetshop.objects(query=query).to_json()
+
+    # Выборка комментариев по нужным датам
+    res = QueryPetshop.objects(query=query).aggregate(
+        [
+            {"$unwind": "$products"},
+            {
+                "$match": {
+                    "products.comments.date": {"$gte": date_start, "$lte": date_end}
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "id_product": "$products.id_product",
+                    "id_similar_products": "$products.id_similar_products",
+                    "name": "$products.name",
+                    "description": "$products.description",
+                    "category_id": "$products.category_id",
+                    "category_name": "$products.category_name",
+                    "brand": "$products.brand",
+                    "price": "$products.price",
+                    "url": "$products.url",
+                    "is_available": "$products.is_available",
+                    "comments": {
+                        "$filter": {
+                            "input": "$products.comments",
+                            "as": "comment",
+                            "cond": {
+                                "$and": [
+                                    {"$gte": ["$$comment.date", date_start]},
+                                    {"$lte": ["$$comment.date", date_end]},
+                                ]
+                            },
+                        }
+                    },
+                }
+            },
+        ]
+    )
+
+    return json.dumps([doc for doc in res], default=json_util.default)
 
 
 @app.route("/healthcheck", methods=["GET"])
