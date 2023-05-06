@@ -1,4 +1,5 @@
 import flask
+import mongoengine
 from src import app
 from src.scripts.parse_wb import download_wildberries_comments
 from src.scripts.parse_mirkorma import download_mirkorma_comments
@@ -62,10 +63,13 @@ def get_data():
     time_start = datetime.strptime(request.args.get("time_start"), '%Y-%m-%d')
     time_end = request.args.get("time_end")
     connect_mongo("PETSHOP")
+    # res = ProductPetshop.objects().aggregate(
+    #     {"$match": {"comments.date": {"$gte": time_start}}},
+    #     {"$unwind": "$comments"},
+    #     {"$group": {"_id": '$name', "comments": {"$push": '$comments.date'}}}
+    # )
     res = ProductPetshop.objects().aggregate(
-        {"$match": {"comments.date": {"$gte": time_start}}},
-        {"$unwind": "comments"},
-        {"$group": {"_id": '$name', "comments": {"$push": 'comments.date'}}}
+        {'$match': {}}
     )
     out = [doc for doc in res]
     json_result = json.dumps(out, default=json_util.default)
@@ -91,22 +95,30 @@ async def parse_petshop(query):
     time_end = request.args.get("time_end")
     connect_mongo("PETSHOP")
     is_in_db = check_query_in_db(query, QueryPetshop)
+    # Если в базе не было такого запроса
     if is_in_db == "Not found":
         products = await download_petshop_products(query)
-
+        # Исправление JSON
         for idx, product in enumerate(products):
             products[idx] = json.loads(product.to_json())
             products[idx].pop("_id", None)
-        print(products)
+            # Дата конвертируется неправильно, поэтому поправляем
+            for comment in products[idx]['comments']:
+                comment['date'] = datetime.fromtimestamp(comment['date']['$date'] / 1000)
         QueryPetshop(query=query, timestamp=datetime.now(), products=products).save()
         return products
+    # Если был запрос, но слишком давно
     elif is_in_db == "Time":
         products = await download_petshop_products(query)
         found = QueryPetshop.objects(query=query).get()
+        # Исправление JSON
         for idx, product in enumerate(products):
             products[idx] = json.loads(product.to_json())
             products[idx].pop("_id", None)
-        print(products)
+            # Дата конвертируется неправильно, поэтому поправляем
+            for comment in products[idx]['comments']:
+                comment['date'] = datetime.fromtimestamp(
+                    comment['date']['$date'] / 1000)
         found.products = [
             ProductPetshopEmbedded(
                 id_product=product["id_product"],

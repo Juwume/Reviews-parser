@@ -3,6 +3,7 @@ import mongoengine
 import aiohttp
 import asyncio
 from datetime import datetime
+from datetime import date
 from fake_useragent import UserAgent
 import json
 from src.models.petshop import ProductPetshop, CommentPetshop
@@ -47,7 +48,7 @@ async def download_petshop_products(query):
             url="https://www.petshop.ru/search/?q=" + query + "#ps=100",
             headers=headers,
             proxy=proxy,
-            proxy_auth=proxy_auth,
+            proxy_auth=proxy_auth
         ) as response:
             response_text = await response.text()
 
@@ -100,13 +101,20 @@ async def download_petshop_products(query):
                             continue
                         elif "comments" in json_obj_comment:
                             for comment in json_obj_comment["comments"]:
+                                # print(datetime.fromtimestamp(
+                                #     comment["date"]
+                                # ).strftime("%B %d, %Y"))
                                 comment.pop("adminFeature", None)
+                                raw_date = datetime.fromtimestamp(
+                                    comment["date"]
+                                )
+                                comment_date = datetime(raw_date.year,raw_date.month,raw_date.day)
                                 comments.append(
                                     CommentPetshop(
                                         id_comment=str(comment["id"]),
-                                        date=str(datetime.utcfromtimestamp(
+                                        date=datetime.fromtimestamp(
                                             comment["date"]
-                                        ).strftime("%Y-%m-%d")),
+                                        ),
                                         author=str(comment["author"]),
                                         city=str(comment["city"]),
                                         advantages=str(comment["advantages"]),
