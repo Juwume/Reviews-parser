@@ -9,6 +9,7 @@ from src.models.mirkorma import ProductMirkorma, QueryMirkorma
 from src.models.petshop import ProductPetshop, QueryPetshop, ProductPetshopEmbedded
 from datetime import datetime
 import json
+from bson import json_util
 
 from flask import request
 
@@ -20,6 +21,8 @@ def index():
 
 @app.route("/api/wb/<string:query>", methods=["GET"])
 async def parse_wb(query):
+    # TODO: Добавить кэш запроса, добавить селекцию по дате
+    # TODO: Добавить прокси
     connect_mongo("WILDBERRIES")
     is_in_db = check_query_in_db(query, QueryWB)
     if not is_in_db:
@@ -56,15 +59,23 @@ def get_data_wb():
 
 @app.route("/get_data", methods=["GET"])
 def get_data():
-    connector = connect_mongo("wildberries")
-    print("--------")
-    print(list(connector["products"].find()))
-    print("--------")
-    return flask.Response(status=200)
+    time_start = datetime.strptime(request.args.get("time_start"), '%Y-%m-%d')
+    time_end = request.args.get("time_end")
+    connect_mongo("PETSHOP")
+    res = ProductPetshop.objects().aggregate(
+        {"$match": {"comments.date": {"$gte": time_start}}},
+        {"$unwind": "comments"},
+        {"$group": {"_id": '$name', "comments": {"$push": 'comments.date'}}}
+    )
+    out = [doc for doc in res]
+    json_result = json.dumps(out, default=json_util.default)
+    print(out)
+    return json_result
 
 
 @app.route("/api/mirkorma/<string:query>", methods=["GET"])
 async def parse_mirkorma(query):
+    # TODO: Довести до ума (можно в последнюю очередь)
     connect_mongo("MIRKORMA")
     # is_in_db = check_query_in_db(query, QueryMirkorma)
     # if not is_in_db:
@@ -75,6 +86,9 @@ async def parse_mirkorma(query):
 
 @app.route("/api/petshop/<string:query>", methods=["GET"])
 async def parse_petshop(query):
+    # TODO: Доделать селекцию по дате
+    time_start = request.args.get("time_start")
+    time_end = request.args.get("time_end")
     connect_mongo("PETSHOP")
     is_in_db = check_query_in_db(query, QueryPetshop)
     if is_in_db == "Not found":
@@ -95,19 +109,19 @@ async def parse_petshop(query):
         print(products)
         found.products = [
             ProductPetshopEmbedded(
-                id_product=product['id_product'],
-                id_similar_products=product['id_similar_products'],
-                name=product['name'],
-                description=product['description'],
-                category_id=product['category_id'],
-                category_name=product['category_name'],
-                brand=product['brand'],
-                price=product['price'],
-                price_regional=product.get('price_regional'),
-                price_old=product.get('price_old'),
-                url=product['url'],
-                is_available=product['is_available'],
-                comments=product['comments']
+                id_product=product["id_product"],
+                id_similar_products=product["id_similar_products"],
+                name=product["name"],
+                description=product["description"],
+                category_id=product["category_id"],
+                category_name=product["category_name"],
+                brand=product["brand"],
+                price=product["price"],
+                price_regional=product.get("price_regional"),
+                price_old=product.get("price_old"),
+                url=product["url"],
+                is_available=product["is_available"],
+                comments=product["comments"],
             )
             for product in products
         ]

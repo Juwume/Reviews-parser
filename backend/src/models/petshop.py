@@ -3,7 +3,7 @@ from mongoengine import *
 
 class CommentPetshop(EmbeddedDocument):
     id_comment = StringField(required=True)
-    date = StringField(required=False)
+    date = DateTimeField(required=False)
     author = StringField(required=False)
     city = StringField(required=False)
     advantages = StringField(required=False)

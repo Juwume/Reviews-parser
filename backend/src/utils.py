@@ -8,7 +8,7 @@ from asyncio.exceptions import TimeoutError
 from aiohttp.client_exceptions import (
     ClientProxyConnectionError,
     ServerDisconnectedError,
-    ClientResponseError
+    ClientResponseError,
 )
 
 
@@ -42,14 +42,14 @@ def check_query_in_db(query: str, db_obj):
         found = None
     if not found:
         print("not found")
-        return 'Not found'
+        return "Not found"
     elif datetime.now() - found.timestamp > timedelta(seconds=120):
         print(datetime.now())
         print(found.timestamp)
         print("found but time")
-        return 'Time'
+        return "Time"
     print("found")
-    return 'Found'
+    return "Found"
 
 
 async def check_proxy(proxy_url, session, headers, proxy_auth):
@@ -61,7 +61,7 @@ async def check_proxy(proxy_url, session, headers, proxy_auth):
             headers=headers,
             proxy=proxy_url,
             proxy_auth=proxy_auth,
-            timeout=5
+            timeout=5,
         )
         status = response.status
         print(status)
@@ -75,7 +75,7 @@ async def check_proxy(proxy_url, session, headers, proxy_auth):
         TimeoutError,
         ClientProxyConnectionError,
         ServerDisconnectedError,
-        ClientResponseError
+        ClientResponseError,
     ) as err:
         print(err)
         return None
