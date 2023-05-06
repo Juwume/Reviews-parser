@@ -56,23 +56,6 @@ services:
     ports:
       - "8081:8081"
 
-#  redis:
-#    image: redis:7.0.4
-#    container_name: redis
-#    restart: unless-stopped
-#    command: redis-server --requirepass ${REDIS_ROOT_PASSWORD}
-#    ports:
-#     - "6379:6379"
-#    volumes:
-#     - $PWD/redis-data:/var/lib/redis
-#     - $PWD/redis.conf:/usr/local/etc/redis/redis.conf
-#    environment:
-#     - REDIS_REPLICATION_MODE=master
-#    depends_on:
-#      - flask
-#    networks:
-#      - mongo_network
-
   nginx:
     build: ./nginx
     container_name: nginx
@@ -88,45 +71,11 @@ services:
       - mongo_network
       - api_net
 
-  postgres:
-    build: postgres/
-    container_name: postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5432:5432"
-    volumes:
-      - bot_files:/var/lib/postgresql/data
-    networks:
-      - bot_net
-
-  bot:
-    build: bot/
-    container_name: teleg_bot
-    restart: unless-stopped
-    environment:
-      PG_NAME: ${POSTGRES_DB}
-      PG_USER: ${POSTGRES_USER}
-      PG_PASSWORD: ${POSTGRES_PASSWORD}
-      PG_HOST: postgres
-      TOKEN: ${TOKEN}
-    networks:
-      - bot_net
-      - api_net
-    depends_on:
-      - postgres
-
 volumes:
   mongodb_data_container:
-  bot_files:
 
 networks:
   mongo_network:
-    driver: bridge
-  bot_net:
     driver: bridge
   api_net:
     driver: bridge

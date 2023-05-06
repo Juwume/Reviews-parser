@@ -2,11 +2,13 @@ from bs4 import BeautifulSoup
 import mongoengine
 import aiohttp
 import asyncio
+from datetime import datetime
 from fake_useragent import UserAgent
 import json
 from src.models.petshop import ProductPetshop, CommentPetshop
 from copy import deepcopy
 from src.utils import check_proxy
+from src.config import PROXY_LOGIN, PROXY_PASS, PROXY_ADDR
 
 
 def ids_to_str(ids):
@@ -22,13 +24,11 @@ async def download_petshop_products(query):
     # Массив для продуктов
     products = []
     # Список прокси для запросов
-    proxy_list = [
-        "http://85.26.146.169",
-        "http://203.30.189.221:80",
-        "http://203.30.188.42:80",
-        "http://95.174.98.125:80",
-        "http://45.8.211.90:80"
-    ]
+    if PROXY_LOGIN and PROXY_PASS:
+        proxy_auth = aiohttp.BasicAuth(PROXY_LOGIN, PROXY_PASS)
+    else:
+        proxy_auth = None
+    proxy_list = [PROXY_ADDR]
 
     # Открытие сессии
     async with aiohttp.ClientSession() as session:
@@ -38,7 +38,7 @@ async def download_petshop_products(query):
             "cookie": "GA1.1.209467062.1650350987",
         }
         for proxy_url in proxy_list:
-            proxy = await check_proxy(proxy_url, session, headers)
+            proxy = await check_proxy(proxy_url, session, headers, proxy_auth)
             if proxy:
                 break
         print(proxy)
@@ -47,6 +47,7 @@ async def download_petshop_products(query):
             url="https://www.petshop.ru/search/?q=" + query + "#ps=100",
             headers=headers,
             proxy=proxy,
+            proxy_auth=proxy_auth,
         ) as response:
             response_text = await response.text()
 
@@ -64,7 +65,7 @@ async def download_petshop_products(query):
             print("im on " + task)
             url_to_visit = "https://www.petshop.ru" + task
             async with session.get(
-                url=url_to_visit, headers=headers, proxy=proxy
+                url=url_to_visit, headers=headers, proxy=proxy, proxy_auth=proxy_auth
             ) as response_product:
                 response_text = await response_product.text()
                 response_text = response_text[
@@ -88,7 +89,8 @@ async def download_petshop_products(query):
                     + str(json_obj_product["product"]["id"])
                     + "/reviews/?offset=0&limit=200",
                     headers=headers,
-                    proxy=proxy
+                    proxy=proxy,
+                    proxy_auth=proxy_auth,
                 ) as response_comments:
                     comments = []
                     response_text = await response_comments.text()
@@ -102,7 +104,9 @@ async def download_petshop_products(query):
                                 comments.append(
                                     CommentPetshop(
                                         id_comment=str(comment["id"]),
-                                        date=str(comment["date"]),
+                                        date=str(datetime.utcfromtimestamp(
+                                            comment["date"]
+                                        ).strftime("%Y-%m-%d")),
                                         author=str(comment["author"]),
                                         city=str(comment["city"]),
                                         advantages=str(comment["advantages"]),
@@ -161,64 +165,3 @@ async def download_petshop_products(query):
     for product in products:
         product.save()
     return products
-
-
-# async def download_petshop_comments():
-#     # Датафрейм в который складываем результат для выгрузки
-#     comment_df = pd.DataFrame(columns=
-#     [
-#         'id_product',
-#         'date',
-#         'author',
-#         'avatar',
-#         'city',
-#         'rating',
-#         'capture',
-#         'advantages',
-#         'disadvantages',
-#         'comment',
-#     ]
-#     )
-#
-#     # Открытие сессии
-#     async with aiohttp.ClientSession() as session:
-#         headers = {
-#             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-#             'user_agent': UserAgent()['google_chrome'],
-#             'cookie': 'GA1.1.209467062.1650350987'
-#         }
-#
-#         # По каждому товару ищется его комментарий
-#         # Добавить чтобы поиск был по id_product из product_df
-#         for id in range(7100, 7600):
-#             print(id)
-#             # Иногда сохраняем текущий результат
-#             if id % 200 == 0:
-#                 comment_df.to_csv('result_of_parsing_petshop_api_from_7100.csv')
-#
-#             # Запрос комментария
-#             async with session.get(
-#                     url='https://www.petshop.ru/api/v2/site/product/' + str(
-#                             id) + '/reviews/?offset=0&limit=200',
-#                     headers=headers) as response:
-#                 response_text = await response.text()
-#                 try:
-#                     json_obj = json.loads(response_text)
-#                     if 'message' in json_obj:
-#                         continue
-#                     elif 'comments' in json_obj:
-#                         for comment in json_obj['comments']:
-#                             comment.pop('adminFeature', None)
-#                             comment['id_product'] = str(id)
-#                             # print(comment)
-#                             # print(pd.DataFrame(comment))
-#                             comment_df = comment_df.append(comment, ignore_index=True)
-#                 except:
-#                     pass
-#         print(result_data)
-#         result_data.to_csv('result_of_parsing_petshop_api_from_7100.csv')
-#
-#
-# brand_list = [item[0] for item in pd.read_excel('brand_list.xlsx').values]
-# asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-# asyncio.run(get_product_info(brand_list))

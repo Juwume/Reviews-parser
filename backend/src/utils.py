@@ -1,13 +1,14 @@
 import os
 from datetime import timedelta, datetime
 from mongoengine import connect
+import mongoengine
 from aiohttp import ClientHttpProxyError
 from asyncio.exceptions import TimeoutError
 
 from aiohttp.client_exceptions import (
     ClientProxyConnectionError,
     ServerDisconnectedError,
-    ClientResponseError
+    ClientResponseError,
 )
 
 
@@ -34,31 +35,37 @@ def connect_mongo(db_name: str):
 
 def check_query_in_db(query: str, db_obj):
     # found = connection['QUERIES'].find(str.lower(query))
-    found = db_obj.objects(query=query)
+
+    try:
+        found = db_obj.objects(query=query).get()
+    except mongoengine.DoesNotExist:
+        found = None
     if not found:
         print("not found")
-        db_obj(query=query, timestamp=datetime.now()).save()
-        return False
-    elif datetime.now() - found[0].timestamp > timedelta(seconds=30):
+        return "Not found"
+    elif datetime.now() - found.timestamp > timedelta(seconds=120):
+        print(datetime.now())
+        print(found.timestamp)
         print("found but time")
-        found.update(__raw__={"$set": {"timestamp": datetime.now()}})
-        return False
+        return "Time"
     print("found")
-    return True
+    return "Found"
 
 
-async def check_proxy(proxy_url, session, headers):
+async def check_proxy(proxy_url, session, headers, proxy_auth):
     print(proxy_url)
+    print(proxy_auth)
     try:
         response = await session.get(
-            url="http://wildberries.ru",
+            url="http://localhost/healthcheck",
             headers=headers,
             proxy=proxy_url,
-            timeout=2,
+            proxy_auth=proxy_auth,
+            timeout=5,
         )
         status = response.status
         print(status)
-        if status == "200":
+        if status == 200:
             return proxy_url
         else:
             return None
@@ -68,7 +75,7 @@ async def check_proxy(proxy_url, session, headers):
         TimeoutError,
         ClientProxyConnectionError,
         ServerDisconnectedError,
-        ClientResponseError
+        ClientResponseError,
     ) as err:
         print(err)
         return None

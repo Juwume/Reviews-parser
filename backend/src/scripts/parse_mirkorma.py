@@ -52,7 +52,6 @@ async def download_mirkorma_comments(query):
                 )
             # try:
             if comments:
-                print(comments)
                 usage_frequency = None
                 usage_period = None
                 for comment in comments:
