@@ -1,9 +1,7 @@
 from bs4 import BeautifulSoup
 import mongoengine
 import aiohttp
-import asyncio
 from datetime import datetime
-from datetime import date
 from fake_useragent import UserAgent
 import json
 from src.models.petshop import ProductPetshop, CommentPetshop
@@ -101,14 +99,7 @@ async def download_petshop_products(query):
                             continue
                         elif "comments" in json_obj_comment:
                             for comment in json_obj_comment["comments"]:
-                                # print(datetime.fromtimestamp(
-                                #     comment["date"]
-                                # ).strftime("%B %d, %Y"))
                                 comment.pop("adminFeature", None)
-                                raw_date = datetime.fromtimestamp(
-                                    comment["date"]
-                                )
-                                comment_date = datetime(raw_date.year,raw_date.month,raw_date.day)
                                 comments.append(
                                     CommentPetshop(
                                         id_comment=str(comment["id"]),

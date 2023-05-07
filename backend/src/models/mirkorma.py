@@ -1,8 +1,3 @@
-# 'price',
-# 'price_old',
-# 'url',
-# 'is_available',
-
 from mongoengine import *
 
 
