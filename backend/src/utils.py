@@ -11,6 +11,7 @@ from aiohttp.client_exceptions import (
     ClientResponseError,
 )
 
+SECONDS_DELTA_BETWEEN_QUERIES = 120
 
 def connect_mongo(db_name: str):
     """Util to make a connection to the mongoDB
@@ -33,8 +34,14 @@ def connect_mongo(db_name: str):
         return None
 
 
-def check_query_in_db(query: str, db_obj):
-    # found = connection['QUERIES'].find(str.lower(query))
+def check_query_in_db(query: str, db_obj, date_end):
+    """
+    Function that performs search in "cache" DB whether there was such query or not
+    :param query: string query that is a primary key in DB
+    :param db_obj: DB object for search
+    :param date_end: end date for filter comments
+    :return: status, if there is such query
+    """
 
     try:
         found = db_obj.objects(query=query).get()
@@ -43,9 +50,9 @@ def check_query_in_db(query: str, db_obj):
     if not found:
         print("not found")
         return "Not found"
-    elif datetime.now() - found.timestamp > timedelta(seconds=120):
-        print(datetime.now())
-        print(found.timestamp)
+    elif date_end < found.timestamp:
+        return "Already parsed"
+    elif datetime.now() - found.timestamp > timedelta(seconds=SECONDS_DELTA_BETWEEN_QUERIES):
         print("found but time")
         return "Time"
     print("found")
@@ -53,6 +60,14 @@ def check_query_in_db(query: str, db_obj):
 
 
 async def check_proxy(proxy_url, session, headers, proxy_auth):
+    """
+    Function that validates proxy
+    :param proxy_url: URL of proxy server
+    :param session: Open http session
+    :param headers: headers of session and queries
+    :param proxy_auth: Proxy credentials
+    :return: Proxy URL if proxy is valid and None if not
+    """
     print(proxy_url)
     print(proxy_auth)
     try:
