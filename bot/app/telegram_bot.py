@@ -5,7 +5,8 @@ from contextlib import closing
 from config import TOKEN, PG_HOST, PG_NAME, PG_USER, PG_PASSWORD
 from datetime import datetime as dtm
 import requests
-import pandas as pd
+from docx import Document
+from docx.shared import Pt
 
 
 
@@ -18,6 +19,8 @@ def start_message(message):
     keyboard.row('Облако слов', 'Topics')
     keyboard.row('ALERTS subscribtion', 'User subscribtions')
     bot.send_message(message.chat.id, 'Приветствую!', reply_markup=keyboard)
+
+
 
     #conn = psycopg2.connect(dbname="Users_for_reviews", user="postgres", password="admin", host='postgres')
     #cursor = conn.cursor()
@@ -174,17 +177,21 @@ def get_comments(chat_id):
 
 
 def send_comments(chat_id, dict_comments):
-    coments_good = ''
+    doc = Document()
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = 'Times New Roman'
+    font.size = Pt(14)
+
     for row in dict_comments:
-        #bot.send_message(chat_id, ("*" + row['name'] + "*"), parse_mode= 'Markdown')
-        coments_good += ("*" + row['name'] + "*" + "\n")
-        # <span style="color:blue">some *blue* text</span>.
-        #coments_good = ''
+        doc.add_paragraph( style='Normal').add_run(row['name']).bold = True
         for com in row['comments']:
-            coments_good += (com['date']['$date'].replace('T', ' ').replace('Z', '') + " " + com['comment'] + "\n")
-            # print(com['date']['$date'] + " " + com['comment']+ "\n")
-        coments_good += "\n"
-    bot.send_message(chat_id, coments_good, parse_mode= 'Markdown')
+            doc.add_paragraph((com['date']['$date'].replace('T', ' ').replace('Z', '') + " " + com['comment'] + "\n"), style='Normal')
+
+    doc.save("request_result.docx")
+    with open("request_result.docx", "rb") as f:
+        bot.send_document(chat_id, f)
+
 
 
 
