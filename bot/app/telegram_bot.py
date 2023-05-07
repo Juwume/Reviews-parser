@@ -5,6 +5,7 @@ from contextlib import closing
 from config import TOKEN, PG_HOST, PG_NAME, PG_USER, PG_PASSWORD
 from datetime import datetime as dtm
 import requests
+import pandas as pd
 
 
 
@@ -48,6 +49,13 @@ def platform_choosing(message):
     markup.add(telebot.types.InlineKeyboardButton(text='Pet Shop', callback_data='Pet Shop'))
     markup.add(telebot.types.InlineKeyboardButton(text='Мир корма', callback_data='Мир корма'))
     bot.send_message(message.chat.id, text="Выберете платформу", reply_markup=markup)
+
+
+def get_standart_date_interval(weeks_num):
+    now = datetime.datetime.now()
+    start_date = str(now.date() - datetime.timedelta(weeks=weeks_num))
+    end_date = str(now.date())
+    return start_date, end_date
 
 
 def check_date(date):
@@ -140,16 +148,43 @@ def database_insert(chat_id):
                 +str(UserRequests[chat_id]['request_category'])+"');")
     get_comments(chat_id)
 
+
+
 def get_comments(chat_id):
-    r = requests.get('http://backend-flask:5000/api/petshop/whiskas', timeout=100)
-    print(r.json)
+    if str(UserRequests[chat_id]['platform']) == 'Wildberries':
+        platform = 'wb'
+    elif str(UserRequests[chat_id]['platform']) == 'Pet Shop':
+        platform = 'petshop'
+    elif str(UserRequests[chat_id]['platform']) == 'Мир корма':
+        platform = 'mirkorma'
+    request_str = 'http://backend-flask:5000/api/' + str(platform) \
+                  + '/' + str(UserRequests[chat_id]['brand']) + '?date_start=' + \
+                str(UserRequests[chat_id]['start_date']) + '&date_end=' + str(UserRequests[chat_id]['end_date'])
+    #bot.send_message(chat_id, request_str)
+    try:
+        r = requests.get(request_str, timeout=1000)
+        #print(r.json())
+        send_comments(chat_id, r.json())
+
+    except Exception as e:
+        print(e)
+        bot.send_message(chat_id, 'Кажется, произошла ошибка. Проверьте запрос и попробуйте снова')
+    # http://backend-flask:5000/api/petshop/whiskas?date_start=2023-05-01&date_end=2023-06-01
+    #print(r.json)
 
 
-def get_standart_date_interval(weeks_num):
-    now = datetime.datetime.now()
-    start_date = str(now.date() - datetime.timedelta(weeks=weeks_num))
-    end_date = str(now.date())
-    return start_date, end_date
+def send_comments(chat_id, dict_comments):
+    coments_good = ''
+    for row in dict_comments:
+        #bot.send_message(chat_id, ("*" + row['name'] + "*"), parse_mode= 'Markdown')
+        coments_good += ("*" + row['name'] + "*" + "\n")
+        # <span style="color:blue">some *blue* text</span>.
+        #coments_good = ''
+        for com in row['comments']:
+            coments_good += (com['date']['$date'].replace('T', ' ').replace('Z', '') + " " + com['comment'] + "\n")
+            # print(com['date']['$date'] + " " + com['comment']+ "\n")
+        coments_good += "\n"
+    bot.send_message(chat_id, coments_good, parse_mode= 'Markdown')
 
 
 
@@ -189,6 +224,8 @@ def query_handler(call):
 
     elif call.data == 'Yes':
         bot.send_message(call.message.chat.id, "Отлично! Подождите немного пока расчитывается результат")
+        #bot.send_video(call.message.chat.id, 'https://i.pinimg.com/originals/26/2e/3a/262e3a9f491af6c30ed91e4263bd19b8.gif', None, 'Text')
+        #https://usagif.com/wp-content/uploads/loading-96.gif
         markup = telebot.types.InlineKeyboardMarkup()
         database_insert(call.message.chat.id)
 
