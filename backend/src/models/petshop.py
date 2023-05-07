@@ -1,9 +1,12 @@
 from mongoengine import *
+from datetime import datetime, date
 
+def is_datetime_validation(val):
+    pass
 
 class CommentPetshop(EmbeddedDocument):
     id_comment = StringField(required=True)
-    date = DateTimeField(required=False)
+    date = DateTimeField()
     author = StringField(required=False)
     city = StringField(required=False)
     advantages = StringField(required=False)
