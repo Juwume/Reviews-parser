@@ -8,6 +8,8 @@ import requests
 from docx import Document
 from docx.shared import Pt
 
+from words_cloud import get_words_cloud_picture
+
 
 
 bot = telebot.TeleBot(TOKEN)
@@ -168,7 +170,7 @@ def get_comments(chat_id):
         r = requests.get(request_str, timeout=1000)
         #print(r.json())
         if r.status_code == 200:
-            send_comments(chat_id, r.json())
+            choose_way_send(chat_id, r.json())
         else:
             raise Exception('Got error code from request - some problems in backend!')
     except Exception as e:
@@ -176,6 +178,15 @@ def get_comments(chat_id):
         bot.send_message(chat_id, 'Кажется, произошла ошибка. Проверьте запрос и попробуйте снова')
     # http://backend-flask:5000/api/petshop/whiskas?date_start=2023-05-01&date_end=2023-06-01
     #print(r.json)
+
+
+
+def choose_way_send(chat_id, dict_comments):
+    if str(UserRequests[chat_id]['request_category']).lower() == 'облако слов':
+        get_words_cloud_picture(chat_id, bot, dict_comments, str(UserRequests[chat_id]['brand'])  )
+    else:
+        send_comments(chat_id, dict_comments)
+
 
 
 def send_comments(chat_id, dict_comments):

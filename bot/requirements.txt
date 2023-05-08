@@ -33,3 +33,8 @@ wrapt==1.14.1
 yarl==1.7.2
 zipp==3.8.1
 python-docx==0.8.11
+regex
+pandas==1.2.4
+numpy==1.24.3
+wordcloud==1.9.1.1
+pymorphy2==0.9.1
