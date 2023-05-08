@@ -152,7 +152,6 @@ async def parse_mirkorma(query):
 
 @app.route("/api/petshop/<string:query>", methods=["GET"])
 async def parse_petshop(query):
-    # TODO: Добавить проверку, что дата конца меньше даты в query и брать из базы
     date_start = datetime.strptime(request.args.get("date_start", '2000-01-01'), "%Y-%m-%d")
     date_end = datetime.strptime(request.args.get("date_end", '2025-01-01'), "%Y-%m-%d")
     connect_mongo("PETSHOP")
