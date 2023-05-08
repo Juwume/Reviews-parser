@@ -167,8 +167,10 @@ def get_comments(chat_id):
     try:
         r = requests.get(request_str, timeout=1000)
         #print(r.json())
-        send_comments(chat_id, r.json())
-
+        if r.status_code == 200:
+            send_comments(chat_id, r.json())
+        else:
+            raise Exception('Got error code from request - some problems in backend!')
     except Exception as e:
         print(e)
         bot.send_message(chat_id, 'Кажется, произошла ошибка. Проверьте запрос и попробуйте снова')
@@ -188,8 +190,11 @@ def send_comments(chat_id, dict_comments):
         for com in row['comments']:
             doc.add_paragraph((com['date']['$date'].replace('T', ' ').replace('Z', '') + " " + com['comment'] + "\n"), style='Normal')
 
-    doc.save("request_result.docx")
-    with open("request_result.docx", "rb") as f:
+    doc_name = str(UserRequests[chat_id]['platform'])  \
+                  + ' ' + str(UserRequests[chat_id]['brand']) + ' от ' + \
+                str(UserRequests[chat_id]['start_date']) + ' до ' + str(UserRequests[chat_id]['end_date']) + ".docx"
+    doc.save(doc_name)
+    with open(doc_name, "rb") as f:
         bot.send_document(chat_id, f)
 
 
@@ -233,6 +238,7 @@ def query_handler(call):
         bot.send_message(call.message.chat.id, "Отлично! Подождите немного пока расчитывается результат")
         #bot.send_video(call.message.chat.id, 'https://i.pinimg.com/originals/26/2e/3a/262e3a9f491af6c30ed91e4263bd19b8.gif', None, 'Text')
         #https://usagif.com/wp-content/uploads/loading-96.gif
+        bot.send_sticker(call.message.chat.id, 'CAACAgIAAxkBAAEI5bJkWJgWRYc2MSyyrtyzPrfLyMrvnAACUgADr8ZRGgSvecXtKHqOLwQ')
         markup = telebot.types.InlineKeyboardMarkup()
         database_insert(call.message.chat.id)
 
