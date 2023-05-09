@@ -18,8 +18,8 @@ UserRequests = {}
 @bot.message_handler(commands=['start'])
 def start_message(message):
     keyboard = telebot.types.ReplyKeyboardMarkup(True)
-    keyboard.row('Облако слов', 'Topics')
-    keyboard.row('ALERTS subscribtion', 'User subscribtions')
+    keyboard.row('Облако слов', 'Статистика')
+    keyboard.row('Негативные комментарии', 'Позитивные комментарии')
     bot.send_message(message.chat.id, 'Приветствую!', reply_markup=keyboard)
 
 
@@ -39,8 +39,8 @@ def help_message(message):
 @bot.message_handler(content_types=['text'])
 def send_text(message):
     chat_id = message.chat.id
-    if message.text.lower() == 'облако слов' or message.text.lower() == 'alerts subscribtion' or\
-                                                  message.text.lower() == 'topics':
+    if message.text.lower() == 'облако слов' or message.text.lower() == 'статистика' or\
+                        message.text.lower() == 'негативные комментарии' or message.text.lower() == 'позитивные комментарии':
         request_category = message.text
         UserRequests[chat_id] = {"id": chat_id, "request_category": request_category,
                                  "platform": None, "start_date": None,"end_date": None, "brand": None}
@@ -184,9 +184,55 @@ def get_comments(chat_id):
 def choose_way_send(chat_id, dict_comments):
     if str(UserRequests[chat_id]['request_category']).lower() == 'облако слов':
         get_words_cloud_picture(chat_id, bot, dict_comments, str(UserRequests[chat_id]['brand'])  )
-    else:
-        send_comments(chat_id, dict_comments)
 
+    elif str(UserRequests[chat_id]['request_category']).lower() == 'негативные комментарии':
+        # собираем все негативные комментарии
+        coments_negative = get_one_tonality_comments(dict_comments, 1)
+        send_comments(chat_id, coments_negative)
+
+    elif str(UserRequests[chat_id]['request_category']).lower() == 'позитивные комментарии':
+        # собираем все позитивные комментарии
+        coments_positive = get_one_tonality_comments(dict_comments, 0)
+        send_comments(chat_id, coments_positive)
+
+    elif str(UserRequests[chat_id]['request_category']).lower() == 'статистика':
+        get_comments_statistics(chat_id, dict_comments)
+
+
+
+
+def get_one_tonality_comments(dict_comments, tonality):
+    coments_good = []
+    for row in dict_comments:
+        comments = []
+        for com in row['comments']:
+            if com['tonality'] == tonality:  # positive
+                comments.append(com)
+        if comments:
+            coments_good.append({'name': row['name'], 'comments': comments})
+    return coments_good
+
+
+
+def get_comments_statistics(chat_id, dict_response):
+    goods_number = len(dict_response)
+    coments_good = []
+    coments_bad = []
+    for row in dict_response:
+        # comments = []
+        for com in row['comments']:
+            if com['tonality'] == 1:  # negative
+                coments_bad.append(com)
+            elif com['tonality'] == 0:  # positive
+                coments_good.append(com)
+    positive_num = len(coments_good)
+    negative_num = len(coments_bad)
+    all_num = positive_num + negative_num
+    send_statistics_str = 'Количество товаров бренда, на которые оставляли отзывы: ' + str(goods_number) + '\n\n'
+    send_statistics_str += 'Количество комментариев: ' + str(all_num) + '\n\n'
+    send_statistics_str += 'Количество положительных комментариев: ' + str(positive_num) + '\n\n'
+    send_statistics_str += 'Количество комментариев с негативом: ' + str(negative_num)
+    bot.send_message(chat_id, send_statistics_str)
 
 
 def send_comments(chat_id, dict_comments):
@@ -226,7 +272,7 @@ def query_handler(call):
         try:
             UserRequests[call.message.chat.id]['platform'] = platform
             answer = 'Супер!'
-            bot.send_message(call.message.chat.id, text="Выберите сегмент", reply_markup=markup)
+            bot.send_message(call.message.chat.id, text="Выберите даты, за которые будут выданы комментарии", reply_markup=markup)
         except:
             bot.send_message(call.message.chat.id, 'Пожалуйста, начните с начала и выберите категорию из меню')
 
