@@ -10,6 +10,7 @@ class CommentPetshop(EmbeddedDocument):
     disadvantages = StringField(required=False)
     comment = StringField(required=False)
     rating = IntField(required=False)
+    tonality = FloatField(required=False)
 
 
 class ProductPetshop(Document):

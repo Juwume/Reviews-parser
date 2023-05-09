@@ -1,32 +1,36 @@
+import os
 import pymorphy2
 import re
-from sklearn.feature_extraction.text import TfidfTransformer, CountVectorizer
 from joblib import load
 
-MODEL_PATH = './models/xgboost.joblib'
-VECTORIZER_PATH = './models/count_vectorizer.pkl'
-TRANSFORMER_PATH = './models/tf_idf_transformer.pkl'
-STOP_WORDS_PATH = './models/stop_words.txt'
 
-def read_model(model_path:str, stop_words_path:str, vectorizer_path, transformer_path):
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),'models/xgboost.joblib')
+VECTORIZER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),'models/count_vectorizer.pkl')
+TRANSFORMER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),'models/tf_idf_transformer.pkl')
+STOP_WORDS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),'models/stop_words.txt')
+# Constant for classification
+THRESHOLD = 0.6
+
+def read_model():
     """
     Function that reads all important objects for inference
-    :param model_path: Path to the pretrained model
-    :param stop_words_path: Path to the stop words dictionary
-    :param vectorizer_path: Path to the CountVectorizer
-    :param transformer_path: Path to the TF-IDF transformer
     :return: loaded objects (model, stop_words, vectorizer, transformer)
     """
-    with open(stop_words_path, 'r') as f:
+    with open(STOP_WORDS_PATH, 'r') as f:
         stop_words = [line.rstrip('\n') for line in f]
-    vectorizer = load(vectorizer_path)
-    transformer = load(transformer_path)
-    model = load(model_path)
+    vectorizer = load(VECTORIZER_PATH)
+    transformer = load(TRANSFORMER_PATH)
+    model = load(MODEL_PATH)
     return model, stop_words, vectorizer, transformer
 
 def inference(text:str, model, stop_words:list, vectorizer, transformer):
     """
-    Inference function for text classification model
+    Inference function for text classification model.
+    Our classification model achieves on test data:
+    Accuracy = 0.9421994298299337,
+    Precicion = 0.9214625363004213
+    Recall = 0.9347586857412357
+    Roc auc = 0.9421994298299338
     :param text:
     :param model: Classification model
     :param stop_words: List of words to delete
@@ -42,6 +46,7 @@ def inference(text:str, model, stop_words:list, vectorizer, transformer):
     # Lemmatizing text
     morph = pymorphy2.MorphAnalyzer()
     text_lemmatized = ' '.join([morph.parse(word)[0].normal_form for word in text_filtered])
+    print(text_lemmatized)
     # TF-IDF
     word_count_vector = vectorizer.transform([text_lemmatized])
     x = transformer.transform(word_count_vector)
