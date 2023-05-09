@@ -50,7 +50,7 @@ async def download_petshop_products(query):
             headers=headers,
             proxy=proxy,
             proxy_auth=proxy_auth,
-            timeout=2
+            timeout=10
         ) as response:
             response_text = await response.text()
 
@@ -86,14 +86,16 @@ async def download_petshop_products(query):
                     found = ProductPetshop.objects(
                         id_product=str(json_obj_product["product"]["id"])
                     ).get()
+                    comments_amt = found.comments_amt
                     print("IT WAS FOUND")
                 except mongoengine.DoesNotExist:
                     found = None
+                    comments_amt = 0
                 # Получение комментариев
                 async with session.get(
                     url="https://www.petshop.ru/api/v2/site/product/"
                     + str(json_obj_product["product"]["id"])
-                    + "/reviews/?offset=0&limit=200",
+                    + "/reviews/?offset=" + str(comments_amt) + "&limit=200",
                     headers=headers,
                     proxy=proxy,
                     proxy_auth=proxy_auth,
@@ -107,6 +109,7 @@ async def download_petshop_products(query):
                             continue
                         elif "comments" in json_obj_comment:
                             for comment in json_obj_comment["comments"]:
+                                print(comment)
                                 comment.pop("adminFeature", None)
                                 comments.append(
                                     CommentPetshop(
@@ -144,7 +147,9 @@ async def download_petshop_products(query):
                         found.is_available = json_obj_product["product"]["isAvailable"]
                         found.category_id = str(json_obj_product["category"]["id"])
                         found.category_name = str(json_obj_product["category"]["name"])
-                        found.comments = deepcopy(comments)
+                        if len(comments) > 0:
+                            found.comments.append(deepcopy(comments))
+                            found.comments_amt += len(comments)
                         products.append(found)
                     else:
                         products.append(
@@ -167,7 +172,8 @@ async def download_petshop_products(query):
                                 is_available=json_obj_product["product"]["isAvailable"],
                                 category_id=str(json_obj_product["category"]["id"]),
                                 category_name=str(json_obj_product["category"]["name"]),
-                                comments=comments,
+                                comments_amt=len(comments),
+                                comments=comments
                             )
                         )
     for product in products:

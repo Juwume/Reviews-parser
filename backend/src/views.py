@@ -200,7 +200,8 @@ async def parse_petshop(query):
                 price_old=product.get("price_old"),
                 url=product["url"],
                 is_available=product["is_available"],
-                comments=product["comments"],
+                comments_amt=product['comments_amt'],
+                comments=product["comments"]
             )
             for product in products
         ]

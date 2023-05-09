@@ -26,6 +26,7 @@ class ProductPetshop(Document):
     price_old = FloatField(required=False)
     url = StringField(required=False)
     is_available = BooleanField(required=False)
+    comments_amt = IntField(required=False)
     comments = ListField(EmbeddedDocumentField(CommentPetshop))
     meta = {"db_alias": "PETSHOP"}
 
@@ -43,6 +44,7 @@ class ProductPetshopEmbedded(EmbeddedDocument):
     price_old = FloatField(required=False)
     url = StringField(required=False)
     is_available = BooleanField(required=False)
+    comments_amt = IntField(required=False)
     comments = ListField(EmbeddedDocumentField(CommentPetshop))
 
 
