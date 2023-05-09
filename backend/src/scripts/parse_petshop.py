@@ -8,6 +8,7 @@ from src.models.petshop import ProductPetshop, CommentPetshop
 from copy import deepcopy
 from src.utils import check_proxy
 from src.config import PROXY_LOGIN, PROXY_PASS, PROXY_ADDR
+from src.classifier.catboost_classifier import read_model, inference
 
 
 def ids_to_str(ids):
@@ -22,6 +23,8 @@ async def download_petshop_products(query):
     tasks = []
     # Массив для продуктов
     products = []
+
+    model, stop_words, vectorizer, transformer = read_model()
     # Список прокси для запросов
     if PROXY_LOGIN and PROXY_PASS:
         proxy_auth = aiohttp.BasicAuth(PROXY_LOGIN, PROXY_PASS)
@@ -46,7 +49,8 @@ async def download_petshop_products(query):
             url="https://www.petshop.ru/search/?q=" + query + "#ps=100",
             headers=headers,
             proxy=proxy,
-            proxy_auth=proxy_auth
+            proxy_auth=proxy_auth,
+            timeout=2
         ) as response:
             response_text = await response.text()
 
@@ -71,7 +75,10 @@ async def download_petshop_products(query):
                     response_text.find(string_to_find) + len(string_to_find) :
                 ]
                 response_text = response_text[: response_text.find(");")]
-                json_obj_product = json.loads(response_text)
+                try:
+                    json_obj_product = json.loads(response_text)
+                except:
+                    continue
                 if not json_obj_product:
                     continue
                 # Проверка на наличие в базе
@@ -90,6 +97,7 @@ async def download_petshop_products(query):
                     headers=headers,
                     proxy=proxy,
                     proxy_auth=proxy_auth,
+                    timeout=2
                 ) as response_comments:
                     comments = []
                     response_text = await response_comments.text()
@@ -112,6 +120,7 @@ async def download_petshop_products(query):
                                         disadvantages=str(comment["disadvantages"]),
                                         comment=str(comment["comment"]),
                                         rating=float(comment["rating"]),
+                                        tonality=inference(str(comment["comment"]), model, stop_words, vectorizer, transformer)
                                     )
                                 )
                     except:
