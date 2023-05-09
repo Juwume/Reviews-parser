@@ -20,15 +20,10 @@ def start_message(message):
     keyboard = telebot.types.ReplyKeyboardMarkup(True)
     keyboard.row('Облако слов', 'Статистика')
     keyboard.row('Негативные комментарии', 'Позитивные комментарии')
+    #keyboard.row('Облако негативных комментариев', 'Облако позитивных комментариев')
     bot.send_message(message.chat.id, 'Приветствую!', reply_markup=keyboard)
 
 
-
-    #conn = psycopg2.connect(dbname="Users_for_reviews", user="postgres", password="admin", host='postgres')
-    #cursor = conn.cursor()
-    #cursor.execute('SELECT * FROM public."Users" LIMIT 10')
-    #records = cursor.fetchall()
-    #print(records)
 
 
 @bot.message_handler(commands=['help'])
@@ -39,12 +34,22 @@ def help_message(message):
 @bot.message_handler(content_types=['text'])
 def send_text(message):
     chat_id = message.chat.id
-    if message.text.lower() == 'облако слов' or message.text.lower() == 'статистика' or\
+    if  message.text.lower() == 'статистика' or\
                         message.text.lower() == 'негативные комментарии' or message.text.lower() == 'позитивные комментарии':
         request_category = message.text
         UserRequests[chat_id] = {"id": chat_id, "request_category": request_category,
                                  "platform": None, "start_date": None,"end_date": None, "brand": None}
         platform_choosing(message)
+
+    elif message.text.lower() == 'облако слов':
+        markup = telebot.types.InlineKeyboardMarkup()
+        markup.add(telebot.types.InlineKeyboardButton(text='Общее облако слов', callback_data='Общее облако слов'))
+        markup.add(telebot.types.InlineKeyboardButton(text='Облако позитивных комментариев', callback_data='Облако позитивных комментариев'))
+        markup.add(telebot.types.InlineKeyboardButton(text='Облако негативных комментариев', callback_data='Облако негативных комментариев'))
+        bot.send_message(message.chat.id, text="Выберете, из каких комментариев строить облако слов", reply_markup=markup)
+
+
+
 
 
 @bot.message_handler(content_types = ['text'])
@@ -179,11 +184,19 @@ def get_comments(chat_id):
     # http://backend-flask:5000/api/petshop/whiskas?date_start=2023-05-01&date_end=2023-06-01
     #print(r.json)
 
-
+#  'Общее облако слов' or call.data == 'Облако позитивных комментариев' or call.data == 'Облако негативных комментариев'
 
 def choose_way_send(chat_id, dict_comments):
-    if str(UserRequests[chat_id]['request_category']).lower() == 'облако слов':
+    if str(UserRequests[chat_id]['request_category']).lower() == 'общее облако слов':
         get_words_cloud_picture(chat_id, bot, dict_comments, str(UserRequests[chat_id]['brand'])  )
+
+    elif str(UserRequests[chat_id]['request_category']).lower() == 'облако позитивных комментариев':
+        coments_positive = get_one_tonality_comments(dict_comments, 0)
+        get_words_cloud_picture(chat_id, bot, coments_positive, str(UserRequests[chat_id]['brand'])  )
+
+    elif str(UserRequests[chat_id]['request_category']).lower() == 'облако негативных комментариев':
+        coments_negative = get_one_tonality_comments(dict_comments, 1)
+        get_words_cloud_picture(chat_id, bot, coments_negative, str(UserRequests[chat_id]['brand'])  )
 
     elif str(UserRequests[chat_id]['request_category']).lower() == 'негативные комментарии':
         # собираем все негативные комментарии
@@ -257,6 +270,8 @@ def send_comments(chat_id, dict_comments):
 
 
 
+
+
 @bot.callback_query_handler(func=lambda call: True)
 def query_handler(call):
     markup = telebot.types.InlineKeyboardMarkup()
@@ -275,6 +290,14 @@ def query_handler(call):
             bot.send_message(call.message.chat.id, text="Выберите даты, за которые будут выданы комментарии", reply_markup=markup)
         except:
             bot.send_message(call.message.chat.id, 'Пожалуйста, начните с начала и выберите категорию из меню')
+
+
+    elif call.data == 'Общее облако слов' or call.data == 'Облако позитивных комментариев' or call.data == 'Облако негативных комментариев':
+        request_category = call.data
+        UserRequests[call.message.chat.id] = {"id": call.message.chat.id, "request_category": request_category,
+                                 "platform": None, "start_date": None, "end_date": None, "brand": None}
+        platform_choosing(call.message)
+
 
 
     elif call.data == 'last_week':
