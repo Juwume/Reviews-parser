@@ -1,9 +1,10 @@
 import mongoengine
 import aiohttp
-import asyncio
 from fake_useragent import UserAgent
 import json
+from datetime import datetime
 from src.models.wb import ProductWB, CommentWB
+from src.classifier.catboost_classifier import read_model, inference
 
 
 async def download_wildberries_comments(query: str):
@@ -12,6 +13,8 @@ async def download_wildberries_comments(query: str):
     :param query: Query to search
     :return: List of products which were found by this query
     """
+    # Reading model
+    model, stop_words, vectorizer, transformer = read_model()
     # Create session
     async with aiohttp.ClientSession() as session:
         products = []
@@ -36,6 +39,7 @@ async def download_wildberries_comments(query: str):
                         + str(product["id"])
                         + ".json"
                     )
+                    print("im on " + url_imt)
                     async with session.get(
                         url=url_imt, headers=headers
                     ) as response_imt:
@@ -66,7 +70,7 @@ async def download_wildberries_comments(query: str):
                         found = None
                     comments_amt_after = int(product["feedbacks"])
                     if found:
-                        comments_amt_before = found.feedbacks_amt
+                        comments_amt_before = found.comments_amt
                     else:
                         comments_amt_before = 0
                     comments = []
@@ -90,6 +94,7 @@ async def download_wildberries_comments(query: str):
                                 feedbacks = json.loads(response_text).get("feedbacks")
                                 if not feedbacks:
                                     feedbacks = []
+                        print(str(len(feedbacks)))
                         if len(feedbacks) > 0:
                             for comment in feedbacks[
                                 comments_amt_before:comments_amt_after
@@ -100,10 +105,17 @@ async def download_wildberries_comments(query: str):
                                 else:
                                     pluses_amt = 0
                                     minuses_amt = 0
-
+                                print(comment.get("text"))
+                                print(comment.get("createdDate"))
+                                try:
+                                    date = datetime.strptime(
+                                        comment.get("createdDate"), "%Y-%m-%dT%H:%M:%SZ"
+                                    )
+                                except ValueError:
+                                    date = None
                                 comments.append(
                                     CommentWB(
-                                        date=str(comment.get("createdDate")),
+                                        date=date,
                                         author=str(
                                             comment.get("wbUserDetails").get("name")
                                         ),
@@ -113,12 +125,19 @@ async def download_wildberries_comments(query: str):
                                         comment=str(comment.get("text")),
                                         pluses_amt=int(pluses_amt),
                                         minuses_amt=int(minuses_amt),
+                                        tonality=inference(
+                                            str(comment.get("text")),
+                                            model,
+                                            stop_words,
+                                            vectorizer,
+                                            transformer,
+                                        ),
                                     )
                                 )
                     if found:
                         for comment in comments:
                             found.comments.append(comment)
-                        found.feedbacks_amt = int(product["feedbacks"])
+                        found.comments_amt = int(product["feedbacks"])
                         products.append(found)
                     else:
                         products.append(
@@ -138,11 +157,10 @@ async def download_wildberries_comments(query: str):
                                     + "/detail.aspx?targetUrl=XS"
                                 ),
                                 rating=float(product["rating"]),
-                                feedbacks_amt=int(product["feedbacks"]),
+                                comments_amt=int(product["feedbacks"]),
                                 comments=comments,
                             )
                         )
-        await asyncio.sleep(0.5)
     for product in products:
         product.save()
     return products

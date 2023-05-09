@@ -18,7 +18,7 @@ def ids_to_str(ids):
         return str(ids)
 
 
-async def download_petshop_products(query):
+async def download_petshop_comments(query):
     # Список задач (страницы товаров)
     tasks = []
     # Массив для продуктов
@@ -50,7 +50,7 @@ async def download_petshop_products(query):
             headers=headers,
             proxy=proxy,
             proxy_auth=proxy_auth,
-            timeout=10
+            timeout=10,
         ) as response:
             response_text = await response.text()
 
@@ -95,11 +95,13 @@ async def download_petshop_products(query):
                 async with session.get(
                     url="https://www.petshop.ru/api/v2/site/product/"
                     + str(json_obj_product["product"]["id"])
-                    + "/reviews/?offset=" + str(comments_amt) + "&limit=200",
+                    + "/reviews/?offset="
+                    + str(comments_amt)
+                    + "&limit=200",
                     headers=headers,
                     proxy=proxy,
                     proxy_auth=proxy_auth,
-                    timeout=2
+                    timeout=2,
                 ) as response_comments:
                     comments = []
                     response_text = await response_comments.text()
@@ -109,21 +111,24 @@ async def download_petshop_products(query):
                             continue
                         elif "comments" in json_obj_comment:
                             for comment in json_obj_comment["comments"]:
-                                print(comment)
                                 comment.pop("adminFeature", None)
                                 comments.append(
                                     CommentPetshop(
                                         id_comment=str(comment["id"]),
-                                        date=datetime.fromtimestamp(
-                                            comment["date"]
-                                        ),
+                                        date=datetime.fromtimestamp(comment["date"]),
                                         author=str(comment["author"]),
                                         city=str(comment["city"]),
                                         advantages=str(comment["advantages"]),
                                         disadvantages=str(comment["disadvantages"]),
                                         comment=str(comment["comment"]),
                                         rating=float(comment["rating"]),
-                                        tonality=inference(str(comment["comment"]), model, stop_words, vectorizer, transformer)
+                                        tonality=inference(
+                                            str(comment["comment"]),
+                                            model,
+                                            stop_words,
+                                            vectorizer,
+                                            transformer,
+                                        ),
                                     )
                                 )
                     except:
@@ -173,7 +178,7 @@ async def download_petshop_products(query):
                                 category_id=str(json_obj_product["category"]["id"]),
                                 category_name=str(json_obj_product["category"]["name"]),
                                 comments_amt=len(comments),
-                                comments=comments
+                                comments=comments,
                             )
                         )
     for product in products:
