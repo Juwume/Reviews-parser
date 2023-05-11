@@ -79,28 +79,28 @@ async def parse_wb(query):
     return json.dumps([doc for doc in res], default=json_util.default)
 
 
-@app.route("/api/wb/get_data", methods=["GET"])
-def get_data_wb():
-    filters = {}
-    if request.args.get("seller"):
-        filters["seller"] = request.args.get("seller")
-    else:
-        filters["seller"] = ""
-    if request.args.get("date"):
-        filters["date"] = request.args.get("date")
-    else:
-        filters["date"] = "01.01.1900"
-    if request.args.get("brand"):
-        filters["brand"] = request.args.get("brand")
-    else:
-        filters["brand"] = ""
-    connect_mongo("WILDBERRIES")
-    print(
-        ProductWB.objects(
-            brand__istartswith=filters["brand"], seller__istartswith=filters["seller"]
-        ).to_json()
-    )
-    return flask.Response(status=200)
+# @app.route("/api/wb/get_data", methods=["GET"])
+# def get_data_wb():
+#     filters = {}
+#     if request.args.get("seller"):
+#         filters["seller"] = request.args.get("seller")
+#     else:
+#         filters["seller"] = ""
+#     if request.args.get("date"):
+#         filters["date"] = request.args.get("date")
+#     else:
+#         filters["date"] = "01.01.1900"
+#     if request.args.get("brand"):
+#         filters["brand"] = request.args.get("brand")
+#     else:
+#         filters["brand"] = ""
+#     connect_mongo("WILDBERRIES")
+#     print(
+#         ProductWB.objects(
+#             brand__istartswith=filters["brand"], seller__istartswith=filters["seller"]
+#         ).to_json()
+#     )
+#     return flask.Response(status=200)
 
 
 @app.route("/get_data", methods=["GET"])
