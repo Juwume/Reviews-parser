@@ -31,7 +31,7 @@ def inference(text:str, model, stop_words:list, vectorizer, transformer):
     Precicion = 0.9260379462934971
     Recall = 0.9390572924932551
     Roc auc = 0.9466007732268533
-    :param text:
+    :param text: Text to classify
     :param model: Classification model
     :param stop_words: List of words to delete
     :param vectorizer: Pretrained CountVectorizer

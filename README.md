@@ -1,4 +1,4 @@
-[![Typing SVG](https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=40&duration=4000&pause=1000&color=19F768&background=3925FF00&vCenter=true&width=435&lines=Our+Diploma+work+README;Enjoy+%3A3)](https://git.io/typing-svg)
+[![Typing SVG](https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=40&duration=4000&pause=1000&color=19F768&background=3925FF00&vCenter=true&width=435&lines=Our+Diploma+work;Enjoy+%3A3)](https://git.io/typing-svg)
 ## PURPOSE
 This our final project in BMSTU.
 ## AUTHORS
