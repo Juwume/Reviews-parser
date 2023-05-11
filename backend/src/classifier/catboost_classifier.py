@@ -16,7 +16,7 @@ def read_model():
     Function that reads all important objects for inference
     :return: loaded objects (model, stop_words, vectorizer, transformer)
     """
-    with open(STOP_WORDS_PATH, 'r') as f:
+    with open(STOP_WORDS_PATH, 'r', encoding='utf-8') as f:
         stop_words = [line.rstrip('\n') for line in f]
     vectorizer = load(VECTORIZER_PATH)
     transformer = load(TRANSFORMER_PATH)
@@ -27,10 +27,10 @@ def inference(text:str, model, stop_words:list, vectorizer, transformer):
     """
     Inference function for text classification model.
     Our classification model achieves on test data:
-    Accuracy = 0.9421994298299337,
-    Precicion = 0.9214625363004213
-    Recall = 0.9347586857412357
-    Roc auc = 0.9421994298299338
+    Accuracy = 0.9466007732268533
+    Precicion = 0.9260379462934971
+    Recall = 0.9390572924932551
+    Roc auc = 0.9466007732268533
     :param text:
     :param model: Classification model
     :param stop_words: List of words to delete
@@ -46,7 +46,6 @@ def inference(text:str, model, stop_words:list, vectorizer, transformer):
     # Lemmatizing text
     morph = pymorphy2.MorphAnalyzer()
     text_lemmatized = ' '.join([morph.parse(word)[0].normal_form for word in text_filtered])
-    print(text_lemmatized)
     # TF-IDF
     word_count_vector = vectorizer.transform([text_lemmatized])
     x = transformer.transform(word_count_vector)

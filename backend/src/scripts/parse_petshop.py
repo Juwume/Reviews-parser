@@ -18,7 +18,7 @@ def ids_to_str(ids):
         return str(ids)
 
 
-async def download_petshop_products(query):
+async def download_petshop_comments(query):
     # Список задач (страницы товаров)
     tasks = []
     # Массив для продуктов
@@ -50,7 +50,7 @@ async def download_petshop_products(query):
             headers=headers,
             proxy=proxy,
             proxy_auth=proxy_auth,
-            timeout=2
+            timeout=10,
         ) as response:
             response_text = await response.text()
 
@@ -86,18 +86,22 @@ async def download_petshop_products(query):
                     found = ProductPetshop.objects(
                         id_product=str(json_obj_product["product"]["id"])
                     ).get()
+                    comments_amt = found.comments_amt
                     print("IT WAS FOUND")
                 except mongoengine.DoesNotExist:
                     found = None
+                    comments_amt = 0
                 # Получение комментариев
                 async with session.get(
                     url="https://www.petshop.ru/api/v2/site/product/"
                     + str(json_obj_product["product"]["id"])
-                    + "/reviews/?offset=0&limit=200",
+                    + "/reviews/?offset="
+                    + str(comments_amt)
+                    + "&limit=200",
                     headers=headers,
                     proxy=proxy,
                     proxy_auth=proxy_auth,
-                    timeout=2
+                    timeout=2,
                 ) as response_comments:
                     comments = []
                     response_text = await response_comments.text()
@@ -111,16 +115,20 @@ async def download_petshop_products(query):
                                 comments.append(
                                     CommentPetshop(
                                         id_comment=str(comment["id"]),
-                                        date=datetime.fromtimestamp(
-                                            comment["date"]
-                                        ),
+                                        date=datetime.fromtimestamp(comment["date"]),
                                         author=str(comment["author"]),
                                         city=str(comment["city"]),
                                         advantages=str(comment["advantages"]),
                                         disadvantages=str(comment["disadvantages"]),
                                         comment=str(comment["comment"]),
                                         rating=float(comment["rating"]),
-                                        tonality=inference(str(comment["comment"]), model, stop_words, vectorizer, transformer)
+                                        tonality=inference(
+                                            str(comment["comment"]),
+                                            model,
+                                            stop_words,
+                                            vectorizer,
+                                            transformer,
+                                        ),
                                     )
                                 )
                     except:
@@ -144,32 +152,31 @@ async def download_petshop_products(query):
                         found.is_available = json_obj_product["product"]["isAvailable"]
                         found.category_id = str(json_obj_product["category"]["id"])
                         found.category_name = str(json_obj_product["category"]["name"])
-                        found.comments = deepcopy(comments)
-                        products.append(found)
+                        if len(comments) > 0:
+                            found.comments.extend(comments)
+                            found.comments_amt += len(comments)
+                        found.save()
+                        products.append(str(json_obj_product["product"]["id"]))
                     else:
-                        products.append(
-                            ProductPetshop(
-                                id_product=str(json_obj_product["product"]["id"]),
-                                id_similar_products=ids_to_str(
-                                    json_obj_product["product"]["ids"]
-                                ),
-                                name=str(json_obj_product["product"]["name"]),
-                                brand=str(json_obj_product["product"]["brand"]),
-                                price=json_obj_product["product"]["price"],
-                                price_old=json_obj_product["product"]["price_old"],
-                                url=json_obj_product["product"]["url"],
-                                price_regional=json_obj_product["product"][
-                                    "price_regional"
-                                ],
-                                description=str(
-                                    json_obj_product["product"]["description"]
-                                ),
-                                is_available=json_obj_product["product"]["isAvailable"],
-                                category_id=str(json_obj_product["category"]["id"]),
-                                category_name=str(json_obj_product["category"]["name"]),
-                                comments=comments,
-                            )
-                        )
-    for product in products:
-        product.save()
+                        ProductPetshop(
+                            id_product=str(json_obj_product["product"]["id"]),
+                            id_similar_products=ids_to_str(
+                                json_obj_product["product"]["ids"]
+                            ),
+                            name=str(json_obj_product["product"]["name"]),
+                            brand=str(json_obj_product["product"]["brand"]),
+                            price=json_obj_product["product"]["price"],
+                            price_old=json_obj_product["product"]["price_old"],
+                            url=json_obj_product["product"]["url"],
+                            price_regional=json_obj_product["product"][
+                                "price_regional"
+                            ],
+                            description=str(json_obj_product["product"]["description"]),
+                            is_available=json_obj_product["product"]["isAvailable"],
+                            category_id=str(json_obj_product["category"]["id"]),
+                            category_name=str(json_obj_product["category"]["name"]),
+                            comments_amt=len(comments),
+                            comments=comments,
+                        ).save()
+                        products.append(str(json_obj_product["product"]["id"]))
     return products

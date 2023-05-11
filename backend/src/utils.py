@@ -72,7 +72,7 @@ async def check_proxy(proxy_url, session, headers, proxy_auth):
     print(proxy_auth)
     try:
         response = await session.get(
-            url="http://localhost/healthcheck",
+            url="https://wildberries.ru",
             headers=headers,
             proxy=proxy_url,
             proxy_auth=proxy_auth,

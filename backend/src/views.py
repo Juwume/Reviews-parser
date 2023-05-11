@@ -1,17 +1,15 @@
 import flask
-import mongoengine
 from src import app
 from src.scripts.parse_wb import download_wildberries_comments
 from src.scripts.parse_mirkorma import download_mirkorma_comments
-from src.scripts.parse_petshop import download_petshop_products
+from src.scripts.parse_petshop import download_petshop_comments
 from src.utils import connect_mongo, check_query_in_db
 from src.models.wb import ProductWB, QueryWB
 from src.models.mirkorma import ProductMirkorma, QueryMirkorma
-from src.models.petshop import ProductPetshop, QueryPetshop, ProductPetshopEmbedded
+from src.models.petshop import ProductPetshop, QueryPetshop
 from datetime import datetime
 import json
 from bson import json_util
-
 from flask import request
 
 
@@ -22,16 +20,63 @@ def index():
 
 @app.route("/api/wb/<string:query>", methods=["GET"])
 async def parse_wb(query):
-    # TODO: Добавить кэш запроса, добавить селекцию по дате
-    # TODO: Добавить прокси
+    # TODO:  Worker with pid 7 was terminated due to signal 9
+    date_start = datetime.strptime(
+        request.args.get("date_start", "2000-01-01"), "%Y-%m-%d"
+    )
+    date_end = datetime.strptime(request.args.get("date_end", "2025-01-01"), "%Y-%m-%d")
     connect_mongo("WILDBERRIES")
-    is_in_db = check_query_in_db(query, QueryWB)
-    if not is_in_db:
+    is_in_db = check_query_in_db(query, QueryWB, date_end)
+    # Если в базе не было такого запроса
+    if is_in_db == "Not found":
         products = await download_wildberries_comments(query)
-        return [product.to_json() for product in products]
-    return ProductWB.objects().to_json()
-    # return products
-    # download_wildberries_products()
+        QueryWB(
+            query=query,
+            timestamp=datetime.now(),
+            products=products,
+        ).save()
+    # Если был запрос, но слишком давно
+    elif is_in_db == "Time":
+        products = await download_wildberries_comments(query)
+        found = QueryWB.objects(query=query).get()
+        # Обновление QueryPetshop новыми данными
+        found.products = products
+        found.timestamp = datetime.now()
+        found.save()
+    ids = QueryWB.objects(query=query).only("products").get().products
+    # Выборка комментариев по нужным датам
+    res = ProductWB.objects().aggregate(
+        [
+            {"$match": {"id_product": {"$in": ids}}},
+            {"$match": {"comments.date": {"$gte": date_start, "$lte": date_end}}},
+            {
+                "$project": {
+                    "_id": 0,
+                    "name": 1,
+                    "description": 1,
+                    "seller": 1,
+                    "category_name": 1,
+                    "brand": 1,
+                    "price": 1,
+                    "url": 1,
+                    "comments": {
+                        "$filter": {
+                            "input": "$comments",
+                            "as": "comment",
+                            "cond": {
+                                "$and": [
+                                    {"$gte": ["$$comment.date", date_start]},
+                                    {"$lte": ["$$comment.date", date_end]},
+                                ]
+                            },
+                        }
+                    },
+                }
+            },
+        ]
+    )
+
+    return json.dumps([doc for doc in res], default=json_util.default)
 
 
 @app.route("/api/wb/get_data", methods=["GET"])
@@ -63,80 +108,6 @@ def get_data():
     date_start = datetime.strptime(request.args.get("time_start"), "%Y-%m-%d")
     date_end = datetime.strptime(request.args.get("time_end"), "%Y-%m-%d")
     connect_mongo("PETSHOP")
-    # res = ProductPetshop.objects().aggregate(
-    #     {"$match": {"comments.date": {"$gte": time_start}}},
-    #     {"$unwind": "$comments"},
-    #     {"$group": {"_id": '$name', "comments": {"$push": '$comments.date'}}}
-    # )
-    # res = ProductPetshop.objects().aggregate(
-    #     [
-    #         {
-    #             "$match": {
-    #                 "comments": {
-    #                     "$elemMatch": {"date": {"$gte": time_start, "$lte": time_end}}
-    #                 }
-    #             }
-    #         },
-    #         {
-    #             "$addFields": {
-    #                 "comments": {
-    #                     "$filter": {
-    #                         "input": "$comments",
-    #                         "as": "comment",
-    #                         "cond": {
-    #                             "$and": [
-    #                                 {"$gte": ["$$comment.date", time_start]},
-    #                                 {"$lte": ["$$comment.date", time_end]},
-    #                             ]
-    #                         },
-    #                     }
-    #                 }
-    #             }
-    #         },
-    #     ]
-    # )
-
-    res = QueryPetshop.objects(query="whiskas").aggregate(
-        [
-            {"$unwind": "$products"},
-            {
-                "$match": {
-                    "products.comments.date": {"$gte": date_start, "$lte": date_end}
-                }
-            },
-            {
-                "$project": {
-                    "_id": 0,
-                    "id_product": "$products.id_product",
-                    "id_similar_products": "$products.id_similar_products",
-                    "name": "$products.name",
-                    "description": "$products.description",
-                    "category_id": "$products.category_id",
-                    "category_name": "$products.category_name",
-                    "brand": "$products.brand",
-                    "price": "$products.price",
-                    "url": "$products.url",
-                    "is_available": "$products.is_available",
-                    "comments": {
-                        "$filter": {
-                            "input": "$products.comments",
-                            "as": "comment",
-                            "cond": {
-                                "$and": [
-                                    {"$gte": ["$$comment.date", date_start]},
-                                    {"$lte": ["$$comment.date", date_end]},
-                                ]
-                            },
-                        }
-                    },
-                }
-            },
-        ]
-    )
-    out = [doc for doc in res]
-    json_result = json.dumps(out, default=json_util.default)
-    print(out)
-    return json_result
 
 
 @app.route("/api/mirkorma/<string:query>", methods=["GET"])
@@ -152,86 +123,55 @@ async def parse_mirkorma(query):
 
 @app.route("/api/petshop/<string:query>", methods=["GET"])
 async def parse_petshop(query):
-    date_start = datetime.strptime(request.args.get("date_start", '2000-01-01'), "%Y-%m-%d")
-    date_end = datetime.strptime(request.args.get("date_end", '2025-01-01'), "%Y-%m-%d")
+    # Get params
+    date_start = datetime.strptime(
+        request.args.get("date_start", "2000-01-01"), "%Y-%m-%d"
+    )
+    date_end = datetime.strptime(request.args.get("date_end", "2025-01-01"), "%Y-%m-%d")
+    # Connection to database and search query
     connect_mongo("PETSHOP")
-
     is_in_db = check_query_in_db(query, QueryPetshop, date_end)
 
     # Если в базе не было такого запроса
     if is_in_db == "Not found":
-        products = await download_petshop_products(query)
-        # Исправление JSON
-        for idx, product in enumerate(products):
-            products[idx] = json.loads(product.to_json())
-            products[idx].pop("_id", None)
-            # Дата конвертируется неправильно, поэтому поправляем
-            for comment in products[idx]["comments"]:
-                comment["date"] = datetime.fromtimestamp(
-                    comment["date"]["$date"] / 1000
-                )
-        QueryPetshop(query=query, timestamp=datetime.now(), products=products).save()
+        products = await download_petshop_comments(query)
+        QueryPetshop(
+            query=query,
+            timestamp=datetime.now(),
+            products=products,
+        ).save()
 
     # Если был запрос, но слишком давно
     elif is_in_db == "Time":
-        products = await download_petshop_products(query)
+        products = await download_petshop_comments(query)
         found = QueryPetshop.objects(query=query).get()
-        # Исправление JSON
-        for idx, product in enumerate(products):
-            products[idx] = json.loads(product.to_json())
-            products[idx].pop("_id", None)
-            # Дата конвертируется неправильно, поэтому поправляем
-            for comment in products[idx]["comments"]:
-                comment["date"] = datetime.fromtimestamp(
-                    comment["date"]["$date"] / 1000
-                )
         # Обновление QueryPetshop новыми данными
-        found.products = [
-            ProductPetshopEmbedded(
-                id_product=product["id_product"],
-                id_similar_products=product["id_similar_products"],
-                name=product["name"],
-                description=product["description"],
-                category_id=product["category_id"],
-                category_name=product["category_name"],
-                brand=product["brand"],
-                price=product["price"],
-                price_regional=product.get("price_regional"),
-                price_old=product.get("price_old"),
-                url=product["url"],
-                is_available=product["is_available"],
-                comments=product["comments"],
-            )
-            for product in products
-        ]
+        found.products = products
         found.timestamp = datetime.now()
         found.save()
 
+    ids = QueryPetshop.objects(query=query).only("products").get().products
     # Выборка комментариев по нужным датам
-    res = QueryPetshop.objects(query=query).aggregate(
+    res = ProductPetshop.objects().aggregate(
         [
-            {"$unwind": "$products"},
-            {
-                "$match": {
-                    "products.comments.date": {"$gte": date_start, "$lte": date_end}
-                }
-            },
+            {"$match": {"id_product": {"$in": ids}}},
+            {"$match": {"comments.date": {"$gte": date_start, "$lte": date_end}}},
             {
                 "$project": {
                     "_id": 0,
-                    "id_product": "$products.id_product",
-                    "id_similar_products": "$products.id_similar_products",
-                    "name": "$products.name",
-                    "description": "$products.description",
-                    "category_id": "$products.category_id",
-                    "category_name": "$products.category_name",
-                    "brand": "$products.brand",
-                    "price": "$products.price",
-                    "url": "$products.url",
-                    "is_available": "$products.is_available",
+                    "id_product": 1,
+                    "id_similar_products": 1,
+                    "name": 1,
+                    "description": 1,
+                    "category_id": 1,
+                    "category_name": 1,
+                    "brand": 1,
+                    "price": 1,
+                    "url": 1,
+                    "is_available": 1,
                     "comments": {
                         "$filter": {
-                            "input": "$products.comments",
+                            "input": "$comments",
                             "as": "comment",
                             "cond": {
                                 "$and": [
