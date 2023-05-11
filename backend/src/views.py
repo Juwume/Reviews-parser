@@ -20,8 +20,6 @@ def index():
 
 @app.route("/api/wb/<string:query>", methods=["GET"])
 async def parse_wb(query):
-    # TODO: Добавить сохранения при парсинге
-    # TODO: Убрать падение при неактивности
     # TODO:  Worker with pid 7 was terminated due to signal 9
     date_start = datetime.strptime(
         request.args.get("date_start", "2000-01-01"), "%Y-%m-%d"
@@ -35,14 +33,14 @@ async def parse_wb(query):
         QueryWB(
             query=query,
             timestamp=datetime.now(),
-            products=[product["id_product"] for product in products],
+            products=products,
         ).save()
     # Если был запрос, но слишком давно
     elif is_in_db == "Time":
         products = await download_wildberries_comments(query)
         found = QueryWB.objects(query=query).get()
         # Обновление QueryPetshop новыми данными
-        found.products = [product["id_product"] for product in products]
+        found.products = products
         found.timestamp = datetime.now()
         found.save()
     ids = QueryWB.objects(query=query).only("products").get().products
@@ -140,7 +138,7 @@ async def parse_petshop(query):
         QueryPetshop(
             query=query,
             timestamp=datetime.now(),
-            products=[product["id_product"] for product in products],
+            products=products,
         ).save()
 
     # Если был запрос, но слишком давно
@@ -148,7 +146,7 @@ async def parse_petshop(query):
         products = await download_petshop_comments(query)
         found = QueryPetshop.objects(query=query).get()
         # Обновление QueryPetshop новыми данными
-        found.products = [product["id_product"] for product in products]
+        found.products = products
         found.timestamp = datetime.now()
         found.save()
 

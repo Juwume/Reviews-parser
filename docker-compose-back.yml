@@ -20,7 +20,7 @@ services:
       - mongo
     ports:
       - "5000:5000"
-    command: gunicorn --bind 0.0.0.0:5000 main:app --timeout 600
+    command: gunicorn --bind 0.0.0.0:5000 main:app --timeout 1200
 
   mongo:
     image: mongo:6.0.1

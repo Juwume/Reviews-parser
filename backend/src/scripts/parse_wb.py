@@ -134,33 +134,31 @@ async def download_wildberries_comments(query: str):
                                         ),
                                     )
                                 )
+                    # If product was found then we add comments to it
                     if found:
-                        for comment in comments:
-                            found.comments.append(comment)
+                        found.comments.extend(comments)
                         found.comments_amt = int(product["feedbacks"])
-                        products.append(found)
+                        products.append(found.id_product)
+                    # Else we create new product
                     else:
-                        products.append(
-                            ProductWB(
-                                id_product=str(product["id"]),
-                                root_imt_id=product_root,
-                                name=str(json_obj_imt.get("imt_name")),
-                                description=str(json_obj_imt.get("description")),
-                                seller=seller_name,
-                                category_name=str(product["name"]),
-                                brand=str(product["brand"]),
-                                price=int(product["salePriceU"]) / 100,
-                                price_old=int(product["priceU"]) / 100,
-                                url=(
+                        ProductWB(
+                            id_product=str(product["id"]),
+                            root_imt_id=product_root,
+                            name=str(json_obj_imt.get("imt_name")),
+                            description=str(json_obj_imt.get("description")),
+                            seller=seller_name,
+                            category_name=str(product["name"]),
+                            brand=str(product["brand"]),
+                            price=int(product["salePriceU"]) / 100,
+                            price_old=int(product["priceU"]) / 100,
+                            url=(
                                     "https://www.wildberries.ru/catalog/"
                                     + str(product["id"])
                                     + "/detail.aspx?targetUrl=XS"
-                                ),
-                                rating=float(product["rating"]),
-                                comments_amt=int(product["feedbacks"]),
-                                comments=comments,
-                            )
-                        )
-    for product in products:
-        product.save()
+                            ),
+                            rating=float(product["rating"]),
+                            comments_amt=int(product["feedbacks"]),
+                            comments=comments,
+                        ).save()
+                        products.append(str(product["id"]))
     return products
