@@ -5,7 +5,8 @@ import json
 from datetime import datetime
 from src.models.wb import ProductWB, CommentWB
 from src.classifier.catboost_classifier import read_model, inference
-
+from src.utils import check_proxy
+from src.config import PROXY_LOGIN, PROXY_PASS, PROXY_ADDR
 
 async def download_wildberries_comments(query: str):
     """
@@ -15,6 +16,12 @@ async def download_wildberries_comments(query: str):
     """
     # Reading model
     model, stop_words, vectorizer, transformer = read_model()
+    # Список прокси для запросов
+    if PROXY_LOGIN and PROXY_PASS:
+        proxy_auth = aiohttp.BasicAuth(PROXY_LOGIN, PROXY_PASS)
+    else:
+        proxy_auth = None
+    proxy_list = [PROXY_ADDR]
     # Create session
     async with aiohttp.ClientSession() as session:
         products = []
@@ -22,6 +29,12 @@ async def download_wildberries_comments(query: str):
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
             "user_agent": UserAgent()["google chrome"],
         }
+        # Check if proxy works
+        for proxy_url in proxy_list:
+            proxy = await check_proxy(proxy_url, session, headers, proxy_auth)
+            if proxy:
+                break
+        print(proxy)
         # URL to parse products
         url = (
             "https://search.wb.ru/exactmatch/ru/common/v4/search?appType=1&couponsGeo=12,3,18,15,21&curr=rub&dest=-1029256,-102269,-1278703,-1255563&emp=0&lang=ru&locale=ru&pricemarginCoeff=1.0&query="
