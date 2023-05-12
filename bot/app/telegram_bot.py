@@ -233,7 +233,10 @@ def get_comments(chat_id):
         r = requests.get(request_str, timeout=1000)
         #print(r.json())
         if r.status_code == 200:
-            choose_way_send(chat_id, r.json())
+            if r.json():
+                choose_way_send(chat_id, r.json())
+            else:
+                bot.send_message(chat_id, 'Не удалось найти комментарии по вашему запросу. Проверьте запрос и попробуйте снова')
         else:
             raise Exception('Got error code from request - some problems in backend!')
     except Exception as e:
@@ -276,19 +279,23 @@ def choose_way_send(chat_id, dict_comments):
 
 def choose_way_with_tonality(chat_id, dict_comments, tonality):
     coments_tonality = get_one_tonality_comments(dict_comments, tonality)
-    if UserRequests[chat_id]['format'] == 'Word':
-        send_word(chat_id, dict_comments, 0)
-    elif UserRequests[chat_id]['format'] == 'JSON':
-        send_json(chat_id, coments_tonality)
-
+    if coments_tonality:
+        if UserRequests[chat_id]['format'] == 'Word':
+            send_word(chat_id, dict_comments, 0)
+        elif UserRequests[chat_id]['format'] == 'JSON':
+            send_json(chat_id, coments_tonality)
+    else:
+        bot.send_message(chat_id, 'Не удалось найти комментарии с такой тональностью')
 
 def choose_way_with_rating(chat_id, dict_comments, tonality):
     coments_rating = get_rating_comments(dict_comments, tonality)
-    if UserRequests[chat_id]['format'] == 'Word':
-        send_word(chat_id, dict_comments, 1)
-    elif UserRequests[chat_id]['format'] == 'JSON':
-        send_json(chat_id, coments_rating)
-
+    if coments_rating:
+        if UserRequests[chat_id]['format'] == 'Word':
+            send_word(chat_id, dict_comments, 1)
+        elif UserRequests[chat_id]['format'] == 'JSON':
+            send_json(chat_id, coments_rating)
+    else:
+        bot.send_message(chat_id, 'Не удалось найти комментарии с таким рейтингом')
 
 
 def get_rating_comments(dict_comments, tonality):
@@ -328,6 +335,8 @@ def get_comments_statistics(chat_id, dict_response):
     goods_number = len(dict_response)
     coments_good = []
     coments_bad = []
+    coments_good_rating = []
+    coments_bad_rating = []
     for row in dict_response:
         # comments = []
         for com in row['comments']:
@@ -335,13 +344,21 @@ def get_comments_statistics(chat_id, dict_response):
                 coments_bad.append(com)
             elif com['tonality'] == 0:  # positive
                 coments_good.append(com)
+            if com['rating'] >= 4:  # positive rating
+                coments_good_rating.append(com)
+            elif com['rating'] <= 3:  # negative rating
+                coments_bad_rating.append(com)
     positive_num = len(coments_good)
     negative_num = len(coments_bad)
+    positive_rat_num = len(coments_good_rating)
+    negative_rat_num = len(coments_bad_rating)
     all_num = positive_num + negative_num
     send_statistics_str = 'Количество товаров бренда, на которые оставляли отзывы: ' + str(goods_number) + '\n\n'
     send_statistics_str += 'Количество комментариев: ' + str(all_num) + '\n\n'
     send_statistics_str += 'Количество положительных комментариев: ' + str(positive_num) + '\n\n'
-    send_statistics_str += 'Количество комментариев с негативом: ' + str(negative_num)
+    send_statistics_str += 'Количество комментариев с негативом: ' + str(negative_num) + '\n\n'
+    send_statistics_str += 'Количество комментариев с рейтингом 4 или 5: ' + str(positive_rat_num) + '\n\n'
+    send_statistics_str += 'Количество комментариев с рейтингом 3 и ниже: ' + str(negative_rat_num)
     bot.send_message(chat_id, send_statistics_str)
 
 
