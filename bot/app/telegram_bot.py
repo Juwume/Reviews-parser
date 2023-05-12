@@ -21,9 +21,15 @@ def start_message(message):
     keyboard.row('Облако слов', 'Статистика')
     keyboard.row('Негативные комментарии', 'Позитивные комментарии')
     #keyboard.row('Облако негативных комментариев', 'Облако позитивных комментариев')
-    bot.send_message(message.chat.id, 'Приветствую!', reply_markup=keyboard)
+    bot.send_message(message.chat.id, 'Приветствую! Этот бот может помочь проанализировать отзывы на продукты бренда. Выберете кнопку из меню для того, чтобы получить комментарии в удобном для вас формате', reply_markup=keyboard)
 
 
+@bot.message_handler(commands=['info'])
+def start_message(message):
+    keyboard = telebot.types.ReplyKeyboardMarkup(True)
+    keyboard.row('Облако слов', 'Статистика')
+    keyboard.row('Негативные комментарии', 'Позитивные комментарии')
+    bot.send_message(message.chat.id, 'Этот бот может помочь проанализировать отзывы на продукты бренда. Выберете кнопку из меню для того, чтобы получить комментарии в удобном для вас формате', reply_markup=keyboard)
 
 
 @bot.message_handler(commands=['help'])
@@ -125,14 +131,36 @@ def dates_interval_set(message, start_date, end_date):
 
 def brand_choosing(message):
     brand = bot.send_message(message.chat.id, 'Введите бренд (например, Whiskas)')
-    bot.register_next_step_handler(message, check_info)
+    if str(UserRequests[message.chat.id]['request_category']).lower() == 'негативные комментарии' or \
+            str(UserRequests[message.chat.id]['request_category']).lower() == 'позитивные комментарии':
+        bot.register_next_step_handler(message, choose_format)
+    else:
+        bot.register_next_step_handler(message, set_brand)
 
 
-def check_info(message):
+def choose_format(message):
+    UserRequests[message.chat.id]['brand'] = message.text
+    markup = telebot.types.InlineKeyboardMarkup()
+    markup.add(telebot.types.InlineKeyboardButton(text='Word', callback_data='Word'))
+    markup.add(telebot.types.InlineKeyboardButton(text='JSON', callback_data='JSON'))
+    bot.send_message(message.chat.id, text="Выберете, в каком формате вам удобно получить комментарии",
+                     reply_markup=markup)
+
+
+def set_brand(message):
     chat_id = message.chat.id
     brand = message.text
     try:
         UserRequests[chat_id]['brand'] = brand
+        check_info(message)
+    except Exception as e:
+        bot.send_message(message.chat.id, 'Пожалуйста, начните с начала и выберите категорию из меню')
+
+
+
+def check_info(message):
+    chat_id = message.chat.id
+    try:
         send_str = 'Ваш выбор: \nПлатформа - ' + UserRequests[chat_id]['platform'] +\
                     '\nДата начала - ' + UserRequests[chat_id]['start_date'] + \
                    '\nДата конца - ' + UserRequests[chat_id]['end_date'] + \
@@ -170,7 +198,6 @@ def get_comments(chat_id):
     request_str = 'http://backend-flask:5000/api/' + str(platform) \
                   + '/' + str(UserRequests[chat_id]['brand']) + '?date_start=' + \
                 str(UserRequests[chat_id]['start_date']) + '&date_end=' + str(UserRequests[chat_id]['end_date'])
-    #bot.send_message(chat_id, request_str)
     try:
         r = requests.get(request_str, timeout=1000)
         #print(r.json())
@@ -198,18 +225,29 @@ def choose_way_send(chat_id, dict_comments):
         coments_negative = get_one_tonality_comments(dict_comments, 1)
         get_words_cloud_picture(chat_id, bot, coments_negative, str(UserRequests[chat_id]['brand'])  )
 
+
+
     elif str(UserRequests[chat_id]['request_category']).lower() == 'негативные комментарии':
         # собираем все негативные комментарии
         coments_negative = get_one_tonality_comments(dict_comments, 1)
-        send_comments(chat_id, coments_negative)
+        if UserRequests[chat_id]['format'] == 'Word':
+            send_comments(chat_id, coments_negative)
+        elif UserRequests[chat_id]['format'] == 'JSON':
+            send_json(chat_id, coments_negative)
 
     elif str(UserRequests[chat_id]['request_category']).lower() == 'позитивные комментарии':
         # собираем все позитивные комментарии
         coments_positive = get_one_tonality_comments(dict_comments, 0)
-        send_comments(chat_id, coments_positive)
+        if UserRequests[chat_id]['format'] == 'Word':
+            send_comments(chat_id, coments_positive)
+        elif UserRequests[chat_id]['format'] == 'JSON':
+            send_json(chat_id, coments_positive)
+
 
     elif str(UserRequests[chat_id]['request_category']).lower() == 'статистика':
         get_comments_statistics(chat_id, dict_comments)
+
+
 
 
 
@@ -222,7 +260,7 @@ def get_one_tonality_comments(dict_comments, tonality):
             if com['tonality'] == tonality:  # positive
                 comments.append(com)
         if comments:
-            coments_good.append({'name': row['name'], 'comments': comments})
+            coments_good.append({'name': row['name'], 'url': row['url'],  'comments': comments})
     return coments_good
 
 
@@ -256,7 +294,8 @@ def send_comments(chat_id, dict_comments):
     font.size = Pt(14)
 
     for row in dict_comments:
-        doc.add_paragraph( style='Normal').add_run(row['name']).bold = True
+        doc.add_paragraph(style='Normal').add_run(row['name']).bold = True
+        doc.add_paragraph("Ссылка на товар: " + row['url'] + "\n", style='Normal')
         for com in row['comments']:
             doc.add_paragraph((com['date']['$date'].replace('T', ' ').replace('Z', '') + " " + com['comment'] + "\n"), style='Normal')
 
@@ -268,7 +307,14 @@ def send_comments(chat_id, dict_comments):
         bot.send_document(chat_id, f)
 
 
-
+def send_json(chat_id, dict_comments):
+    doc_name = str(UserRequests[chat_id]['platform']) \
+               + ' ' + str(UserRequests[chat_id]['brand']) + ' от ' + \
+               str(UserRequests[chat_id]['start_date']) + ' до ' + str(UserRequests[chat_id]['end_date']) + ".txt"
+    with open(doc_name, "w") as f:
+        f.write(str(dict_comments))
+    with open(doc_name, "r") as f:
+        bot.send_document(chat_id, f)
 
 
 
@@ -313,7 +359,6 @@ def query_handler(call):
         dates_interval_choosing(call.message)
 
 
-
     elif call.data == 'Yes':
         bot.send_message(call.message.chat.id, "Отлично! Подождите немного пока расчитывается результат")
         #bot.send_video(call.message.chat.id, 'https://i.pinimg.com/originals/26/2e/3a/262e3a9f491af6c30ed91e4263bd19b8.gif', None, 'Text')
@@ -325,6 +370,12 @@ def query_handler(call):
     elif call.data == 'No':
         bot.send_message(call.message.chat.id, "Нам очень жаль! Попробуйте еще раз")
         platform_choosing(call.message)
+
+
+    elif call.data == 'Word' or call.data == 'JSON':
+        UserRequests[call.message.chat.id]['format'] = call.data
+        check_info(call.message)
+
 
 
     bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id)
