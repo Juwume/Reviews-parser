@@ -5,6 +5,7 @@ This our final project in BMSTU.
 1. Smyslov Maxim (Back-end)
 2. Bogdanova Valeria (Front-end)
 ## ARCHITECTURE
+![image](https://github.com/Juwume/Reviews-parser/assets/71034341/fd63ea12-fd24-4d5a-bcaa-ef01344e97b5)
 
 ## TECHNOLOGIES
 This app works as a web service, which parses marketplaces, 
@@ -15,9 +16,17 @@ sends the results in Telegram bot
   - `Telebot` 
   - `Flask` 
   - `Aiohttp`
+  - `TF-IDF` as text transformer
+  - `XGBoost` as tonality classifier
   - `mongoengine` as ORM 
-  - `MongoDB` on server side
-  - `PostgreSQL` on client side
+  - `MongoDB` on parser side
+  - `PostgreSQL` on bot side
+## DATASET
+For classification was taken a dataset of human labeled comments from marketplaces. This dataset contains comments from cat food products and each comment is marked as positive or negative.
+## MODEL QUALITY
+    Precicion = 0.9260379462934971
+    Recall = 0.9390572924932551
+    Roc auc = 0.9466007732268533
 ## HOW TO RUN
 1. Fill in the credentials in the `.env` file (there is an example)
 2. ```docker-compose build```
