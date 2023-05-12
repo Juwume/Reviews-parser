@@ -4,6 +4,8 @@ This our final project in BMSTU.
 ## AUTHORS
 1. Smyslov Maxim (Back-end)
 2. Bogdanova Valeria (Front-end)
+## ARCHITECTURE
+
 ## TECHNOLOGIES
 This app works as a web service, which parses marketplaces, 
 then classifies comments as negative or positive and finaly 

@@ -5,7 +5,6 @@ from datetime import datetime
 from fake_useragent import UserAgent
 import json
 from src.models.petshop import ProductPetshop, CommentPetshop
-from copy import deepcopy
 from src.utils import check_proxy
 from src.config import PROXY_LOGIN, PROXY_PASS, PROXY_ADDR
 from src.classifier.catboost_classifier import read_model, inference
