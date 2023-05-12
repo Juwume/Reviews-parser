@@ -5,6 +5,7 @@ This our final project in BMSTU.
 1. Smyslov Maxim (Back-end)
 2. Bogdanova Valeria (Front-end)
 ## ARCHITECTURE
+![image](https://github.com/Juwume/Reviews-parser/assets/71034341/fd63ea12-fd24-4d5a-bcaa-ef01344e97b5)
 
 ## TECHNOLOGIES
 This app works as a web service, which parses marketplaces, 
