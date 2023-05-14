@@ -81,7 +81,6 @@ def platform_choosing(message):
     markup = telebot.types.InlineKeyboardMarkup()
     markup.add(telebot.types.InlineKeyboardButton(text='Wildberries', callback_data='Wildberries'))
     markup.add(telebot.types.InlineKeyboardButton(text='Pet Shop', callback_data='Pet Shop'))
-    markup.add(telebot.types.InlineKeyboardButton(text='Мир корма', callback_data='Мир корма'))
     bot.send_message(message.chat.id, text="Выберете платформу", reply_markup=markup)
 
 
@@ -224,8 +223,7 @@ def get_comments(chat_id):
         platform = 'wb'
     elif str(UserRequests[chat_id]['platform']) == 'Pet Shop':
         platform = 'petshop'
-    elif str(UserRequests[chat_id]['platform']) == 'Мир корма':
-        platform = 'mirkorma'
+
     request_str = 'http://backend-flask:5000/api/' + str(platform) \
                   + '/' + str(UserRequests[chat_id]['brand']) + '?date_start=' + \
                 str(UserRequests[chat_id]['start_date']) + '&date_end=' + str(UserRequests[chat_id]['end_date'])
@@ -417,7 +415,7 @@ def query_handler(call):
     
     #bot.answer_callback_query(callback_query_id=call.id, text='Спасибо за честный ответ!')
     answer = ''
-    if call.data == 'Wildberries' or call.data == 'Pet Shop' or call.data == 'Мир корма':
+    if call.data == 'Wildberries' or call.data == 'Pet Shop':
         platform = call.data
         try:
             UserRequests[call.message.chat.id]['platform'] = platform
