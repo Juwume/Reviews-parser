@@ -281,7 +281,7 @@ def choose_way_with_tonality(chat_id, dict_comments, tonality):
     coments_tonality = get_one_tonality_comments(dict_comments, tonality)
     if coments_tonality:
         if UserRequests[chat_id]['format'] == 'Word':
-            send_word(chat_id, dict_comments, 0)
+            send_word(chat_id, coments_tonality, 0)
         elif UserRequests[chat_id]['format'] == 'JSON':
             send_json(chat_id, coments_tonality)
     else:
@@ -291,7 +291,7 @@ def choose_way_with_rating(chat_id, dict_comments, tonality):
     coments_rating = get_rating_comments(dict_comments, tonality)
     if coments_rating:
         if UserRequests[chat_id]['format'] == 'Word':
-            send_word(chat_id, dict_comments, 1)
+            send_word(chat_id, coments_rating, 1)
         elif UserRequests[chat_id]['format'] == 'JSON':
             send_json(chat_id, coments_rating)
     else:
